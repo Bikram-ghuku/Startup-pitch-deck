@@ -1,0 +1,7 @@
+venv
+.env
+*.txt
+*.pptx
+__pycache__
+output
+!requirements.txt
