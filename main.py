@@ -1,15 +1,8 @@
 from agents.user_chat import supervisor
 from dotenv import load_dotenv
 from pretty_print import pretty_print_messages
-import os
-
-def clear_screen():
-    """Clear the terminal screen."""
-    os.system('cls' if os.name == 'nt' else 'clear')
 
 def print_banner():
-    """Print a welcome banner for the application."""
-    clear_screen()
     print("=" * 80)
     print("PRODUCT DEVELOPMENT ASSISTANT".center(80))
     print("=" * 80)

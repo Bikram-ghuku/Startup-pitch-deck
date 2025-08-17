@@ -21,6 +21,7 @@ innovation_strategist = create_react_agent(
         "\n\nNEVER use informal syntax like <function=web_search>\"query\"</function>. "
         "Always use the proper JSON format for tool arguments."
         "If anything out of your specilisation is asked, you should say that you are not sure and you should not make up any information."
+        "Give answer in paragraph format. Do not use specilised styling like tables or lists."
     ),
     name="innovation_strategist"
 )
