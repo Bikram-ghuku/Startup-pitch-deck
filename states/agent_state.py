@@ -1,7 +1,7 @@
 from typing import TypedDict, Annotated, List, Dict, Optional
 from enum import Enum
 from dataclasses import dataclass
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage
 import time
 
 class AgentStage(Enum):
@@ -74,6 +74,9 @@ class AgentState(TypedDict):
     stage: AgentStage
     messages: Annotated[List[BaseMessage], lambda x, y: x + y]
     
+    # Current agent response
+    current_response: str
+    
     # Search and analysis tracking
     search_history: Annotated[List[SearchEvent], add_search_events]
     current_market_analysis: Annotated[Dict[MarketPerspective, MarketAnalysis], add_market_analyses]
@@ -95,6 +98,7 @@ def create_initial_state(context: str) -> AgentState:
         context=context,
         stage=AgentStage.INITIAL,
         messages=[],
+        current_response="",
         search_history=[],
         current_market_analysis={},
         market_debate_history=[],
@@ -109,9 +113,14 @@ def create_initial_state(context: str) -> AgentState:
 # Helper functions for state updates
 def add_message(state: AgentState, role: str, content: str) -> AgentState:
     """Add a message to the conversation history."""
+    if role == "system":
+        message = SystemMessage(content=content)
+    else:
+        message = HumanMessage(content=content)
+    
     return {
         **state,
-        "messages": state["messages"] + [BaseMessage(role=role, content=content)]
+        "messages": state["messages"] + [message]
     }
 
 def add_search(state: AgentState, query: str, results: List[str]) -> AgentState:

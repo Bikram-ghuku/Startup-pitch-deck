@@ -1,7 +1,10 @@
 from typing import List
 from langchain_groq import ChatGroq
 from dotenv import load_dotenv
-from states.agent_state import AgentState, MarketPerspective, AgentStage
+from states.agent_state import (
+    AgentState, MarketPerspective, AgentStage,
+    add_search, add_market_debate_round, update_stage
+)
 import json
 
 load_dotenv()
@@ -35,11 +38,11 @@ def synthesis_agent(state: AgentState) -> AgentState:
         "competing market perspectives and create a balanced, evidence-based synthesis. "
         "Consider both optimistic opportunities and realistic challenges.\n\n"
         
-        f"CONTEXT:\n{context}\n\n"
+        f"CONTEXT:\n{state['context']}\n\n"
         
         "PERSPECTIVES TO SYNTHESIZE:\n"
-        f"Optimistic View:\n{optimist_analysis}\n\n"
-        f"Pessimistic View:\n{pessimist_analysis}\n\n"
+        f"Optimistic View:\n{optimist_view.analysis}\n\n"
+        f"Pessimistic View:\n{pessimist_view.analysis}\n\n"
         
         "TOOLS AVAILABLE:\n"
         "- web_search: Verify claims and gather additional data\n"
@@ -67,12 +70,12 @@ def synthesis_agent(state: AgentState) -> AgentState:
         "- Verification points\n"
         "- Expert perspectives\n\n"
         
-        "FORMAT:\n"
-        "Present your synthesis as a series of tool calls and insights. "
-        "Use the following structure for tool calls:\n"
-        "```json\n"
-        '{"tool": "tool_name", "parameters": {"param1": "value1"}}\n'
-        "```\n\n"
+        "TOOL USAGE:\n"
+        "When you need to verify information, use the following format:\n"
+        "SEARCH: your specific search query\n\n"
+        "Example searches:\n"
+        "SEARCH: market validation smart home personalization\n"
+        "SEARCH: competitor analysis AI home automation\n\n"
         
         "DELIVERABLES:\n"
         "1. Synthesis Summary\n"
@@ -103,6 +106,11 @@ def synthesis_agent(state: AgentState) -> AgentState:
     # Get LLM response
     response = _synthesis_llm.invoke(prompt)
     response_text = getattr(response, "content", str(response))
+
+    state = {
+        **state,
+        "current_response": response_text
+    }
     
     # Extract tool calls and insights
     tool_calls = []
@@ -123,12 +131,12 @@ def synthesis_agent(state: AgentState) -> AgentState:
     
     # Process tool calls and gather evidence
     evidence = []
-    for tool_call in tool_calls:
-        if tool_call.get("tool") == "web_search":
-            query = tool_call.get("parameters", {}).get("query", "")
-            if query:
-                state = add_search(state, query, ["Search executed"])
-                evidence.append(f"Search: {query}")
+    for line in response_text.split('\n'):
+        if line.strip().startswith('SEARCH:'):
+            query = line[7:].strip()
+            search_result = web_search(query)
+            state = add_search(state, query, [search_result])
+            evidence.append(f"Search: {query} -> {search_result}")
     
     # Add synthesis to state and record debate round
     state = add_market_debate_round(

@@ -1,7 +1,10 @@
 from typing import List
 from langchain_groq import ChatGroq
 from dotenv import load_dotenv
-from states.agent_state import AgentState, MarketPerspective
+from states.agent_state import (
+    AgentState, MarketPerspective, AgentStage,
+    add_search, add_market_analysis, update_stage
+)
 import json
 
 load_dotenv()
@@ -33,7 +36,7 @@ def pessimistic_analyst(state: AgentState) -> AgentState:
         "Your role is to identify potential market challenges, barriers to entry, and "
         "competitive threats. Challenge optimistic assumptions with market realities.\n\n"
         
-        f"CONTEXT:\n{context}\n\n"
+        f"CONTEXT:\n{state['context']}\n\n"
         
         f"OPTIMISTIC VIEW TO CHALLENGE:\n{optimist_view}\n\n"
         
@@ -63,12 +66,12 @@ def pessimistic_analyst(state: AgentState) -> AgentState:
         "- Industry challenges\n"
         "- Expert warnings\n\n"
         
-        "FORMAT:\n"
-        "Present your analysis as a series of tool calls and insights. "
-        "Use the following structure for tool calls:\n"
-        "```json\n"
-        '{"tool": "tool_name", "parameters": {"param1": "value1"}}\n'
-        "```\n\n"
+        "TOOL USAGE:\n"
+        "When you need to search for information, use the following format:\n"
+        "SEARCH: your specific search query\n\n"
+        "Example searches:\n"
+        "SEARCH: failure cases smart home automation\n"
+        "SEARCH: privacy concerns AI assistants\n\n"
         
         "IMPORTANT:\n"
         "- Focus on realistic challenges\n"
@@ -83,6 +86,11 @@ def pessimistic_analyst(state: AgentState) -> AgentState:
     # Get LLM response
     response = _pessimist_llm.invoke(prompt)
     response_text = getattr(response, "content", str(response))
+
+    state = {
+        **state,
+        "current_response": response_text
+    }
     
     # Extract tool calls and insights
     tool_calls = []
@@ -100,15 +108,18 @@ def pessimistic_analyst(state: AgentState) -> AgentState:
     
     # Process tool calls and gather evidence
     evidence = []
-    for tool_call in tool_calls:
-        if tool_call.get("tool") == "web_search":
-            query = tool_call.get("parameters", {}).get("query", "")
-            if query:
-                state = add_search(state, query, ["Search executed"])
-                evidence.append(f"Search: {query}")
+    for line in response_text.split('\n'):
+        if line.strip().startswith('SEARCH:'):
+            query = line[7:].strip()
+            search_result = web_search(query)
+            state = add_search(state, query, [search_result])
+            evidence.append(f"Search: {query} -> {search_result}")
     
-    # Calculate confidence based on evidence strength and tool call success
-    confidence = min(0.4 + (len(evidence) * 0.1), 0.9)  # Slightly lower confidence ceiling for pessimist
+    # Calculate confidence based on evidence quality
+    # Higher confidence for pessimist when finding actual challenges/risks
+    evidence_quality = sum(1 for e in evidence if "No results" not in e and "Search unavailable" not in e)
+    # Pessimist gets higher confidence from finding problems
+    confidence = min(0.4 + (evidence_quality * 0.15), 0.9)  # Can reach 0.9 with good evidence
     
     # Add analysis to state
     state = add_market_analysis(

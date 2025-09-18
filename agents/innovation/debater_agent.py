@@ -1,7 +1,10 @@
 from langchain_groq import ChatGroq
 from dotenv import load_dotenv
 from tools.web_search import web_search
-from states.agent_state import AgentState, AgentStage
+from states.agent_state import (
+    AgentState, AgentStage,
+    add_search, add_innovation_debate, update_stage
+)
 import time
 
 load_dotenv()
@@ -24,27 +27,29 @@ def debater_agent(state: AgentState) -> AgentState:
         Structured critique of reasoning and debate outcome with evidence.
     """
     # Get relevant state information
-    approved_innovations = "\n".join(state.final_innovations) if state.final_innovations else "None yet"
-    current_ratings = "\n".join([f"{k}: {v}/5" for k, v in state.final_ratings.items()]) if state.final_ratings else "No ratings yet"
-    current_risks = "\n".join(state.final_risks) if state.final_risks else "None identified"
-    debate_rounds = len(state.debate_history)
+    approved_innovations = "\n".join(state["final_innovations"]) if state["final_innovations"] else "None yet"
+    current_ratings = "\n".join([f"{k}: {v}/5" for k, v in state["final_ratings"].items()]) if state["final_ratings"] else "No ratings yet"
+    current_risks = "\n".join(state["final_risks"]) if state["final_risks"] else "None identified"
+    debate_rounds = len(state["innovation_debate_history"])
     
     prompt = (
         f"You are a critical innovation analyst evaluating round {debate_rounds + 1}:\n\n"
         
         f"CONTEXT & HISTORY:\n"
-        f"Context: {context}\n"
+        f"Context: {state['context']}\n"
         f"Previously Approved: {approved_innovations}\n"
         f"Current Ratings: {current_ratings}\n"
         f"Known Risks: {current_risks}\n\n"
         
         f"PROPOSED INNOVATION:\n{proposition}\n\n"
         
-        "RESEARCH TOOL:\n"
-        "Use 'SEARCH: query' for validation. Examples:\n"
-        "SEARCH: technical feasibility of [component]\n"
-        "SEARCH: market adoption barriers for [similar solution]\n"
-        "SEARCH: implementation challenges in [domain]\n\n"
+        "TOOL USAGE:\n"
+        "When you need to validate claims, use the following format:\n"
+        "SEARCH: your specific search query\n\n"
+        "Example searches:\n"
+        "SEARCH: technical feasibility AI personalization home automation\n"
+        "SEARCH: implementation challenges smart home learning\n"
+        "SEARCH: privacy concerns smart home assistants\n\n"
         
         "EVALUATION FRAMEWORK:\n"
         "1. Historical Context Check\n"
@@ -95,25 +100,23 @@ def debater_agent(state: AgentState) -> AgentState:
         
         "Format with clear headings. Focus on novel insights and cumulative learning from previous rounds."
     )
-    )
+    
     def _handle_search(response_text: str, state: AgentState) -> str:
         """Process LLM response and handle any search requests."""
         lines = response_text.split('\n')
         result = []
-        i = 0
-        while i < len(lines):
-            line = lines[i].strip()
+        for line in lines:
+            line = line.strip()
             if line.startswith('SEARCH:'):
                 query = line[7:].strip()
-                search_results = web_search(query)
+                search_result = web_search(query)
                 # Add to state
-                state.add_search(query, search_results if isinstance(search_results, list) else [str(search_results)])
+                state = add_search(state, query, [search_result])
                 result.append(f"Search Results for '{query}':")
-                result.append(str(search_results))
+                result.append(search_result)
                 result.append("")
             else:
-                result.append(lines[i])
-            i += 1
+                result.append(line)
         return '\n'.join(result)
 
     # Get current debate round
@@ -133,15 +136,19 @@ def debater_agent(state: AgentState) -> AgentState:
     current_analysis = state["current_analysis"].get('latest_insight', '')
     current_risks = "\n".join(state["final_risks"]) if state["final_risks"] else "None identified"
     
-    # Format prompt with state
+    # Format prompt with debate history and proposition
     prompt = prompt.format(
-        context=f"{state.context}{debate_context}",
         proposition=current_round.innovation_point
     )
 
     # Initial response
     response = _debate_llm.invoke(prompt)
     response_text = getattr(response, "content", str(response))
+
+    state = {
+        **state,
+        "current_response": response_text
+    }
     
     # Handle any searches and get final response
     critique = _handle_search(response_text, state)

@@ -1,7 +1,10 @@
 from langchain_groq import ChatGroq
 from dotenv import load_dotenv
 from tools.web_search import web_search
-from states.agent_state import AgentState, AgentStage
+from states.agent_state import (
+    AgentState, AgentStage,
+    add_search, add_innovation_debate, update_stage
+)
 import time
 
 load_dotenv()
@@ -36,20 +39,22 @@ def innovation_strategist(state: AgentState) -> AgentState:
     ]) if state["innovation_debate_history"] else ""
     
     prompt = (
-        f"You are an innovation strategist analyzing:\n{context}\n\n"
+        f"You are an innovation strategist analyzing:\n{state['context']}\n\n"
         f"CURRENT STATE:\n"
-        f"Stage: {state.stage.value}\n"
+        f"Stage: {state['stage'].value}\n"
         f"Previously Approved Innovations:\n{approved_innovations}\n"
         f"Known Risks:\n{current_risks}\n"
         f"Latest Analysis:\n{current_analysis}\n\n"
         
         f"Previous Debate History:\n{debate_context}\n\n"
         
-        "RESEARCH TOOL:\n"
-        "Use 'SEARCH: query' for market research. Examples:\n"
-        "SEARCH: market size for [relevant sector]\n"
-        "SEARCH: emerging technologies in [domain]\n"
-        "SEARCH: competitor solutions for [problem]\n\n"
+        "TOOL USAGE:\n"
+        "When you need to research, use the following format:\n"
+        "SEARCH: your specific search query\n\n"
+        "Example searches:\n"
+        "SEARCH: innovative features in smart home automation\n"
+        "SEARCH: emerging AI personalization technologies\n"
+        "SEARCH: unique smart home assistant capabilities\n\n"
         
         "ANALYSIS FRAMEWORK:\n"
         "1. Context Review (use search evidence)\n"
@@ -96,33 +101,31 @@ def innovation_strategist(state: AgentState) -> AgentState:
         """Process LLM response and handle any search requests."""
         lines = response_text.split('\n')
         result = []
-        i = 0
-        while i < len(lines):
-            line = lines[i].strip()
+        for line in lines:
+            line = line.strip()
             if line.startswith('SEARCH:'):
                 query = line[7:].strip()
-                search_results = web_search(query)
+                search_result = web_search(query)
                 # Add to state
-                state.add_search(query, search_results if isinstance(search_results, list) else [str(search_results)])
+                state = add_search(state, query, [search_result])
                 result.append(f"Search Results for '{query}':")
-                result.append(str(search_results))
+                result.append(search_result)
                 result.append("")
             else:
-                result.append(lines[i])
-            i += 1
+                result.append(line)
         return '\n'.join(result)
 
-    # Add relevant history context
-    debate_context = f"\nPrevious Debate Points:\n{state.get_debate_history(last_n=2)}" if state.debate_history else ""
-    
-    # Format prompt with state
-    prompt = prompt.format(
-        context=f"{state.context}{debate_context}"
-    )
+    # Format prompt with debate history
+    prompt = prompt.replace("{debate_context}", debate_history)
 
     # Initial response
     response = _innovation_llm.invoke(prompt)
     response_text = getattr(response, "content", str(response))
+
+    state = {
+        **state,
+        "current_response": response_text
+    }
     
     # Handle any searches and get final response
     final_response = _handle_search(response_text, state)
