@@ -12,7 +12,7 @@ load_dotenv()
 _pessimist_llm = ChatGroq(
     model="openai/gpt-oss-120b",
     temperature=0.3,  # Lower temperature for more conservative analysis
-    max_tokens=4096,
+    max_tokens=1024
 )
 
 def pessimistic_analyst(state: AgentState) -> AgentState:
@@ -32,8 +32,8 @@ def pessimistic_analyst(state: AgentState) -> AgentState:
     final_insights = "\n".join(state["final_market_insights"]) if state["final_market_insights"] else "None yet"
     
     prompt = (
-        "You are a cautious market analyst with a strong focus on risk assessment. "
-        "Your role is to identify potential market challenges, barriers to entry, and "
+        "You are a pesimmistic market analyst with a strong focus on why the idea will fail. "
+        "Your role is to identify potential market challenges, barriers to entry, failure reasons and "
         "competitive threats. Challenge optimistic assumptions with market realities.\n\n"
         
         f"CONTEXT:\n{state['context']}\n\n"
@@ -92,28 +92,14 @@ def pessimistic_analyst(state: AgentState) -> AgentState:
         "current_response": response_text
     }
     
-    # Extract tool calls and insights
-    tool_calls = []
-    insights = []
-    
-    for line in response_text.split("\n"):
-        if line.strip().startswith("{") and line.strip().endswith("}"):
-            try:
-                tool_call = json.loads(line.strip())
-                tool_calls.append(tool_call)
-            except json.JSONDecodeError:
-                continue
-        elif line.strip():
-            insights.append(line.strip())
-    
-    # Process tool calls and gather evidence
+    # Process search requests and gather evidence
     evidence = []
     for line in response_text.split('\n'):
         if line.strip().startswith('SEARCH:'):
             query = line[7:].strip()
-            search_result = web_search(query)
-            state = add_search(state, query, [search_result])
-            evidence.append(f"Search: {query} -> {search_result}")
+            # Call web_search tool through state management
+            state = add_search(state, query)
+            evidence.append(f"Search: {query} -> {state['search_results'][-1] if state['search_results'] else 'No results'}")
     
     # Calculate confidence based on evidence quality
     # Higher confidence for pessimist when finding actual challenges/risks

@@ -11,13 +11,16 @@ from agents.innovation.debater_agent import debater_agent
 
 def should_continue_market_analysis(state: AgentState) -> str:
     """Determine if we should continue market analysis or move to innovation."""
-    # Continue if we haven't reached a good market understanding
-    # (measured by having multiple rounds of debate and a clear market score)
-    if len(state["market_debate_history"]) < 2 or state["market_opportunity_score"] == 0.0:
+    # Get current market score, defaulting to 0 if not set
+    market_score = state.get("market_opportunity_score", 0.0)
+    
+    # Continue if we haven't completed at least one full round of analysis
+    # (optimistic -> pessimistic -> synthesis)
+    if len(state["market_debate_history"]) < 1:
         return "continue_market"
     
-    # If market score is too low, end the process
-    if state["market_opportunity_score"] < 0.3:
+    # If market score is too low after analysis, end the process
+    if market_score < 0.3 and len(state["market_debate_history"]) >= 1:
         return "end"
     
     # Move to innovation if we have good market understanding
@@ -130,16 +133,17 @@ def create_verbose_node(name: str, agent_func):
         print(f"\nExecuting {name}...")
         print(format_state_update(state, f"Before {name}"))
         
-        # Get the original response_text attribute from the state if it exists
-        original_response = state.get("current_response", "")
-        if original_response:
-            print(format_state_update(state, f"Previous {name} Response", original_response))
-        
         new_state = agent_func(state)
         
         # Get the new response_text if available
         new_response = new_state.get("current_response", "")
-        print(format_state_update(new_state, f"After {name}", new_response))
+        if new_response:
+            print("\nLLM Response:")
+            print("-" * 80)
+            print(new_response)
+            print("-" * 80)
+        
+        print(format_state_update(new_state, f"After {name}"))
         return new_state
     
     return verbose_node

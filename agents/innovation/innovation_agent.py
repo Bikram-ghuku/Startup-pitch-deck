@@ -12,7 +12,7 @@ load_dotenv()
 _innovation_llm = ChatGroq(
     model="openai/gpt-oss-120b",
     temperature=0.8,
-    max_tokens=4096,
+    max_tokens=1024
 )
 
 def innovation_strategist(state: AgentState) -> AgentState:
@@ -97,7 +97,7 @@ def innovation_strategist(state: AgentState) -> AgentState:
         
         "Format each section with clear headings. Focus on novel insights that build upon our existing knowledge."
     )
-    def _handle_search(response_text: str, state: AgentState) -> str:
+    def _handle_search(response_text: str, state: AgentState) -> tuple[str, AgentState]:
         """Process LLM response and handle any search requests."""
         lines = response_text.split('\n')
         result = []
@@ -105,15 +105,15 @@ def innovation_strategist(state: AgentState) -> AgentState:
             line = line.strip()
             if line.startswith('SEARCH:'):
                 query = line[7:].strip()
-                search_result = web_search(query)
-                # Add to state
-                state = add_search(state, query, [search_result])
+                # Call web_search tool through state management
+                state = add_search(state, query)
+                search_result = state['search_results'][-1] if state['search_results'] else 'No results'
                 result.append(f"Search Results for '{query}':")
                 result.append(search_result)
                 result.append("")
             else:
                 result.append(line)
-        return '\n'.join(result)
+        return '\n'.join(result), state
 
     # Format prompt with debate history
     prompt = prompt.replace("{debate_context}", debate_history)
@@ -128,7 +128,7 @@ def innovation_strategist(state: AgentState) -> AgentState:
     }
     
     # Handle any searches and get final response
-    final_response = _handle_search(response_text, state)
+    final_response, state = _handle_search(response_text, state)
     
     # Store innovation point for debate
     if state["stage"] == AgentStage.ANALYSIS:

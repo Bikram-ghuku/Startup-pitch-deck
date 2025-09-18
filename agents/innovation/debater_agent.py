@@ -12,7 +12,7 @@ load_dotenv()
 _debate_llm = ChatGroq(
     model="openai/gpt-oss-120b",
     temperature=0.5,
-    max_tokens=4096,
+    max_tokens=4096
 )
 
 def debater_agent(state: AgentState) -> AgentState:
@@ -101,7 +101,7 @@ def debater_agent(state: AgentState) -> AgentState:
         "Format with clear headings. Focus on novel insights and cumulative learning from previous rounds."
     )
     
-    def _handle_search(response_text: str, state: AgentState) -> str:
+    def _handle_search(response_text: str, state: AgentState) -> tuple[str, AgentState]:
         """Process LLM response and handle any search requests."""
         lines = response_text.split('\n')
         result = []
@@ -109,15 +109,15 @@ def debater_agent(state: AgentState) -> AgentState:
             line = line.strip()
             if line.startswith('SEARCH:'):
                 query = line[7:].strip()
-                search_result = web_search(query)
-                # Add to state
-                state = add_search(state, query, [search_result])
+                # Call web_search tool through state management
+                state = add_search(state, query)
+                search_result = state['search_results'][-1] if state['search_results'] else 'No results'
                 result.append(f"Search Results for '{query}':")
                 result.append(search_result)
                 result.append("")
             else:
                 result.append(line)
-        return '\n'.join(result)
+        return '\n'.join(result), state
 
     # Get current debate round
     current_round = state["innovation_debate_history"][-1] if state["innovation_debate_history"] else None
@@ -151,7 +151,7 @@ def debater_agent(state: AgentState) -> AgentState:
     }
     
     # Handle any searches and get final response
-    critique = _handle_search(response_text, state)
+    critique, state = _handle_search(response_text, state)
     
     # Extract key information from critique
     # Note: This assumes the critique follows the structured format from the prompt
