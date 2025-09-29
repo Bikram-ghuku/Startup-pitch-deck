@@ -1,18 +1,19 @@
 """
 Pitch deck generation agent that creates compelling presentations.
-Provides content in JSON format required by the PowerPoint generation tool.
 """
+from typing import Dict
+import json
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
-import json
+from states.agent_state import MarketResearchState
 
-async def generate_pitch_deck(product_description: str, market_analysis: str, innovation_proposal: str, groq_api_key: str) -> str:
+async def generate_pitch_deck(state: MarketResearchState) -> Dict:
     """
-    Generate a pitch deck based on product, market analysis and innovation proposal.
-    Returns pitch deck content in JSON format required by the PowerPoint tool.
+    Generate a pitch deck based on market analysis and innovation proposal.
+    Takes a MarketResearchState and returns state dict.
     """
     llm = ChatGroq(
-        groq_api_key=groq_api_key,
+        groq_api_key=state.groq_api_key,
         model_name="mixtral-8x7b-32768",
         temperature=0.7
     )
@@ -48,13 +49,13 @@ async def generate_pitch_deck(product_description: str, market_analysis: str, in
         HumanMessage(content=f"""Create a pitch deck based on this information:
         
         Product Description:
-        {product_description}
+        {state.product_description}
         
         Market Analysis:
-        {market_analysis}
+        {state.market_synthesis}
         
         Innovation Proposal:
-        {innovation_proposal}
+        {state.final_innovation}
         
         Return ONLY the JSON string with no additional text.""")
     ]
@@ -66,10 +67,10 @@ async def generate_pitch_deck(product_description: str, market_analysis: str, in
         deck = json.loads(pitch_content.content)
         if "slides" not in deck or not isinstance(deck["slides"], list):
             raise ValueError("Invalid deck structure")
-        return pitch_content.content
+        state.pitch_deck = pitch_content.content
     except Exception as e:
         # If LLM output isn't valid JSON, create a basic valid structure
-        return json.dumps({
+        state.pitch_deck = json.dumps({
             "slides": [
                 {
                     "title": "Error in Deck Generation",
@@ -78,3 +79,5 @@ async def generate_pitch_deck(product_description: str, market_analysis: str, in
                 }
             ]
         })
+    
+    return state.dict()

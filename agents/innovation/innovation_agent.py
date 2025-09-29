@@ -1,21 +1,18 @@
 """
 Innovation agent that suggests product features and implementation approaches.
 """
+from typing import Dict
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
+from states.agent_state import MarketResearchState
 
-async def generate_innovation_proposal(product_description: str, market_synthesis: str, groq_api_key: str) -> str:
+async def generate_innovation_proposal(state: MarketResearchState) -> Dict:
     """
-    Generate innovative product features and implementation approaches based on product idea and market analysis.
-    Returns proposal as detailed text that can be used by other agents.
-    
-    Args:
-        product_description: Original product idea/description
-        market_synthesis: Synthesized market analysis from market research stage
-        groq_api_key: API key for ChatGroq
+    Generate innovative product features and implementation approaches.
+    Takes a MarketResearchState and returns state dict.
     """
     llm = ChatGroq(
-        groq_api_key=groq_api_key,
+        groq_api_key=state.groq_api_key,
         model_name="mixtral-8x7b-32768",
         temperature=0.7
     )
@@ -27,11 +24,11 @@ async def generate_innovation_proposal(product_description: str, market_synthesi
         Focus on practical innovation that addresses market needs while being technically feasible."""),
         HumanMessage(content=f"""What should we research to develop innovative features for this product?
         
-        Original Product Idea:
-        {product_description}
+        Product Description:
+        {state.product_description}
         
         Market Analysis:
-        {market_synthesis}
+        {state.market_synthesis}
         
         Think step by step about what technical and market information we need to propose innovative solutions 
         that enhance the original product idea while addressing market needs.""")
@@ -59,11 +56,11 @@ async def generate_innovation_proposal(product_description: str, market_synthesi
         original product vision."""),
         HumanMessage(content=f"""Generate an innovation proposal based on this information:
         
-        Original Product Idea:
-        {product_description}
+        Product Description:
+        {state.product_description}
         
         Market Analysis:
-        {market_synthesis}
+        {state.market_synthesis}
         
         Technical Research:
         {innovation_data}
@@ -73,4 +70,7 @@ async def generate_innovation_proposal(product_description: str, market_synthesi
     ]
     
     proposal = await llm.ainvoke(proposal_messages)
-    return proposal.content
+    
+    # Update state
+    state.current_proposal = proposal.content
+    return state.dict()

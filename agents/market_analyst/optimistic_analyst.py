@@ -1,16 +1,18 @@
 """
 Optimistic market analysis that focuses on opportunities and growth potential.
 """
+from typing import Dict
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
+from states.agent_state import MarketResearchState
 
-async def analyze_optimistically(product_description: str, groq_api_key: str) -> str:
+async def analyze_optimistically(state: MarketResearchState) -> Dict:
     """
     Analyze a product from an optimistic market perspective.
-    Returns analysis as a detailed text that can be used by other agents.
+    Takes a MarketResearchState and returns state dict.
     """
     llm = ChatGroq(
-        groq_api_key=groq_api_key,
+        groq_api_key=state.groq_api_key,
         model_name="mixtral-8x7b-32768",
         temperature=0.7
     )
@@ -22,7 +24,7 @@ async def analyze_optimistically(product_description: str, groq_api_key: str) ->
         indicators and potential for success."""),
         HumanMessage(content=f"""What should we research to understand the market potential for this product?
         
-        Product Description: {product_description}
+        Product Description: {state.product_description}
         
         Think step by step about what information would help build a strong case for this product's success.""")
     ]
@@ -47,7 +49,7 @@ async def analyze_optimistically(product_description: str, groq_api_key: str) ->
         While maintaining credibility, emphasize positive signals and growth potential."""),
         HumanMessage(content=f"""Analyze this market research data for our product:
         
-        Product: {product_description}
+        Product: {state.product_description}
         
         Research Findings:
         {market_data}
@@ -56,4 +58,7 @@ async def analyze_optimistically(product_description: str, groq_api_key: str) ->
     ]
     
     analysis = await llm.ainvoke(analysis_messages)
-    return analysis.content
+    
+    # Update state
+    state.optimistic_analysis = analysis.content
+    return state.dict()

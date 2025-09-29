@@ -1,16 +1,18 @@
 """
 Synthesis agent that combines and balances optimistic and pessimistic analyses.
 """
+from typing import Dict
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
+from states.agent_state import MarketResearchState
 
-async def synthesize_analysis(optimistic_analysis: str, pessimistic_analysis: str, groq_api_key: str) -> str:
+async def synthesize_analysis(state: MarketResearchState) -> Dict:
     """
     Synthesize optimistic and pessimistic market analyses into a balanced view.
-    Returns analysis as a detailed text that can be used by other agents.
+    Takes a MarketResearchState and returns state dict.
     """
     llm = ChatGroq(
-        groq_api_key=groq_api_key,
+        groq_api_key=state.groq_api_key,
         model_name="mixtral-8x7b-32768",
         temperature=0.7
     )
@@ -27,14 +29,20 @@ async def synthesize_analysis(optimistic_analysis: str, pessimistic_analysis: st
         Create a nuanced analysis that acknowledges both opportunities and challenges."""),
         HumanMessage(content=f"""Synthesize these two market analyses into a balanced perspective:
         
+        Product Description:
+        {state.product_description}
+        
         Optimistic Analysis:
-        {optimistic_analysis}
+        {state.optimistic_analysis}
         
         Pessimistic Analysis:
-        {pessimistic_analysis}
+        {state.pessimistic_analysis}
         
         Provide a comprehensive synthesis that another agent could use to understand the complete market picture.""")
     ]
     
     synthesis = await llm.ainvoke(synthesis_messages)
-    return synthesis.content
+    
+    # Update state
+    state.market_synthesis = synthesis.content
+    return state.dict()

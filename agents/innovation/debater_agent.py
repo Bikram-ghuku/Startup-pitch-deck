@@ -1,16 +1,18 @@
 """
 Debater agent that critiques and challenges innovation proposals.
 """
+from typing import Dict
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
+from states.agent_state import MarketResearchState
 
-async def debate_proposal(innovation_proposal: str, groq_api_key: str) -> str:
+async def debate_proposal(state: MarketResearchState) -> Dict:
     """
     Critique and challenge an innovation proposal.
-    Returns critique as detailed text that can be used by other agents.
+    Takes a MarketResearchState and returns state dict.
     """
     llm = ChatGroq(
-        groq_api_key=groq_api_key,
+        groq_api_key=state.groq_api_key,
         model_name="mixtral-8x7b-32768",
         temperature=0.7
     )
@@ -22,8 +24,11 @@ async def debate_proposal(innovation_proposal: str, groq_api_key: str) -> str:
         lead to better solutions."""),
         HumanMessage(content=f"""What should we research to effectively critique this proposal?
         
+        Product Description:
+        {state.product_description}
+        
         Innovation Proposal:
-        {innovation_proposal}
+        {state.current_proposal}
         
         Think step by step about what information we need to critically evaluate this proposal.""")
     ]
@@ -48,8 +53,11 @@ async def debate_proposal(innovation_proposal: str, groq_api_key: str) -> str:
         Ensure criticism is specific, actionable, and aimed at improving the proposal."""),
         HumanMessage(content=f"""Critique this innovation proposal based on the research:
         
-        Proposal:
-        {innovation_proposal}
+        Product Description:
+        {state.product_description}
+        
+        Innovation Proposal:
+        {state.current_proposal}
         
         Research Findings:
         {critique_data}
@@ -58,4 +66,7 @@ async def debate_proposal(innovation_proposal: str, groq_api_key: str) -> str:
     ]
     
     critique = await llm.ainvoke(critique_messages)
-    return critique.content
+    
+    # Update state
+    state.current_critique = critique.content
+    return state.dict()
