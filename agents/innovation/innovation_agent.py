@@ -22,7 +22,7 @@ async def generate_innovation_proposal(state: MarketResearchState) -> Dict:
     research_messages = [
         SystemMessage(content="""You are an innovation strategist. Your goal is to propose innovative 
         product features and implementation approaches based on the original product idea and market analysis. 
-        Focus on practical innovation that addresses market needs while being technically feasible."""),
+        Focus on practical innovation that addresses market needs while being technically feasible. Limit the proposal to 200 words."""),
         HumanMessage(content=f"""What should we research to develop innovative features for this product?
         
         Product Description:
@@ -30,6 +30,9 @@ async def generate_innovation_proposal(state: MarketResearchState) -> Dict:
         
         Market Analysis:
         {state.market_synthesis}
+
+        Last Critique:
+        {state.current_critique}
         
         Think step by step about what technical and market information we need to propose innovative solutions 
         that enhance the original product idea while addressing market needs.""")
@@ -53,8 +56,9 @@ async def generate_innovation_proposal(state: MarketResearchState) -> Dict:
         4. Development roadmap
         5. Resource requirements
         
+        Limit the proposal to 200 words.
         Ensure proposals are both innovative and practically achievable while staying true to the 
-        original product vision."""),
+        original product vision. Limit the proposal to 200 words."""),
         HumanMessage(content=f"""Generate an innovation proposal based on this information:
         
         Product Description:
@@ -65,6 +69,9 @@ async def generate_innovation_proposal(state: MarketResearchState) -> Dict:
         
         Technical Research:
         {innovation_data}
+
+        Last Critique:
+        {state.current_critique}
         
         Provide a detailed proposal that another agent could critique and refine. Make sure to explain 
         how each proposed innovation enhances the original product idea while addressing market needs.""")
@@ -72,6 +79,7 @@ async def generate_innovation_proposal(state: MarketResearchState) -> Dict:
     
     proposal = await llm.ainvoke(proposal_messages)
     
+    print("\n\n\nInnovation Proposal: ", proposal.content)
     # Update state
     state.current_proposal = proposal.content
     return state.dict()

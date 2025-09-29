@@ -63,11 +63,14 @@ async def debate_proposal(state: MarketResearchState) -> Dict:
         Research Findings:
         {critique_data}
         
+        Limit the critique to 200 words.
         Provide a detailed critique that can be used to improve the proposal.""")
     ]
     
+    state.iteration_count += 1
     critique = await llm.ainvoke(critique_messages)
     
     # Update state
     state.current_critique = critique.content
+    print("\n\n\nInnovation Critique: ", critique.content)
     return state.dict()

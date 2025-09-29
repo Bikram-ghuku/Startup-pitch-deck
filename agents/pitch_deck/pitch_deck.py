@@ -64,6 +64,7 @@ async def generate_pitch_deck(state: MarketResearchState) -> Dict:
     pitch_content = await llm.ainvoke(pitch_messages)
     
     # Validate JSON structure
+    print("\n\n\nPitch Deck: ", pitch_content.content)
     try:
         deck = json.loads(pitch_content.content)
         if "slides" not in deck or not isinstance(deck["slides"], list):

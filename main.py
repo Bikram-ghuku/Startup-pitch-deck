@@ -43,17 +43,8 @@ async def main():
         print("\nInnovation Results:")
         print("-----------------")
         print("Final Innovation Proposal:")
-        print(result["final_innovation"])
-
-        print("\nPitch Deck Generation:")
-        print("--------------------")
-        # Save the pitch deck
-        from tools.save_pitch_deck_ppt import save_pitch_deck_ppt
-        pitch_deck_result = save_pitch_deck_ppt(
-            content=result["pitch_deck"],
-            filename="ai_skin_analysis_pitch.pptx"
-        )
-        print(pitch_deck_result)
+        # print(result["final_innovation"])
+        
 
     except Exception as e:
         print(f"Error in market research workflow: {str(e)}")

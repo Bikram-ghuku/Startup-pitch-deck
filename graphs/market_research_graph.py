@@ -13,7 +13,7 @@ from agents.innovation.innovation_agent import generate_innovation_proposal
 from agents.innovation.debater_agent import debate_proposal
 from agents.pitch_deck.pitch_deck import generate_pitch_deck
 
-from IPython.display import Image, display
+# from IPython.display import Image, display
 
 async def market_research_graph(
     product_description: str,
