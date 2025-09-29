@@ -13,8 +13,9 @@ async def debate_proposal(state: MarketResearchState) -> Dict:
     """
     llm = ChatGroq(
         groq_api_key=state.groq_api_key,
-        model_name="mixtral-8x7b-32768",
-        temperature=0.7
+        model_name="llama-3.1-8b-instant",
+        temperature=0.7,
+        max_tokens=300
     )
     
     # First, determine what to research for the critique

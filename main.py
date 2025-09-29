@@ -3,7 +3,6 @@ Main entry point for the market research system.
 """
 import os
 import asyncio
-import json
 from dotenv import load_dotenv
 from graphs.market_research_graph import market_research_graph
 
@@ -28,7 +27,7 @@ async def main():
         result = await market_research_graph(
             product_description=product_description,
             groq_api_key=groq_api_key,
-            max_iterations=3  # Maximum innovation-debate iterations
+            max_iterations=1  # Maximum innovation-debate iterations
         )
 
         # Print the results at each stage

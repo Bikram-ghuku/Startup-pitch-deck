@@ -5,6 +5,7 @@ from typing import Dict
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
 from states.agent_state import MarketResearchState
+from tools.web_search import web_search
 
 async def analyze_optimistically(state: MarketResearchState) -> Dict:
     """
@@ -13,8 +14,9 @@ async def analyze_optimistically(state: MarketResearchState) -> Dict:
     """
     llm = ChatGroq(
         groq_api_key=state.groq_api_key,
-        model_name="mixtral-8x7b-32768",
-        temperature=0.7
+        model_name="llama-3.1-8b-instant",
+        temperature=0.7,
+        max_tokens=300
     )
     
     # First, determine what to research
@@ -32,8 +34,7 @@ async def analyze_optimistically(state: MarketResearchState) -> Dict:
     research_plan = await llm.ainvoke(research_messages)
     
     # Use web search based on the LLM's research plan
-    from tools.web_search import web_search
-    market_data = web_search(research_plan.content)
+    market_data = await web_search.ainvoke(research_plan.content)
     
     # Analyze findings with an optimistic perspective
     analysis_messages = [
