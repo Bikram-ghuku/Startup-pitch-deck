@@ -1,117 +1,59 @@
-from typing import List
+"""
+Optimistic market analysis that focuses on opportunities and growth potential.
+"""
 from langchain_groq import ChatGroq
-from dotenv import load_dotenv
-from states.agent_state import (
-    AgentState, MarketPerspective, AgentStage,
-    add_search, add_market_analysis, update_stage
-)
-import json
+from langchain_core.messages import SystemMessage, HumanMessage
 
-load_dotenv()
-
-_optimist_llm = ChatGroq(
-    model="openai/gpt-oss-120b",
-    temperature=0.8,  # Higher temperature for more enthusiastic responses
-    max_tokens=1024
-)
-
-def optimistic_analyst(state: AgentState) -> AgentState:
-    """Optimistic market analyst that seeks growth opportunities and positive market signals."""
-    
-    # Get relevant state information
-    debate_history = "\n".join([
-        f"Round {i+1}:\n{round.synthesis}\nKey Findings: {', '.join(round.key_findings)}"
-        for i, round in enumerate(state["market_debate_history"][-2:])
-    ]) if state["market_debate_history"] else ""
-    
-    current_analysis = state["current_market_analysis"].get(MarketPerspective.OPTIMISTIC)
-    final_insights = "\n".join(state["final_market_insights"]) if state["final_market_insights"] else "None yet"
-    
-    prompt = (
-        "You are an enthusiastic market analyst with a strong growth mindset. "
-        "Your role is to identify and validate market opportunities, focusing on positive signals "
-        "and growth potential.\n\n"
-        
-        f"CONTEXT:\n{state['context']}\n\n"
-        
-        "TOOLS AVAILABLE:\n"
-        "- web_search: Research market trends and opportunities\n"
-        "- market_data: Access market size and growth data\n"
-        "- competitor_analysis: Analyze competitor landscape\n\n"
-        
-        "APPROACH:\n"
-        "1. Market Opportunity Analysis\n"
-        "- Identify growing market segments\n"
-        "- Highlight positive market signals\n"
-        "- Find success stories and analogies\n\n"
-        
-        "2. Growth Potential\n"
-        "- Market expansion possibilities\n"
-        "- User adoption drivers\n"
-        "- Revenue potential\n\n"
-        
-        "3. Competitive Advantage\n"
-        "- Unique value propositions\n"
-        "- Market entry timing\n"
-        "- Strategic positioning\n\n"
-        
-        "4. Supporting Evidence\n"
-        "- Market research data\n"
-        "- Industry trends\n"
-        "- Expert opinions\n\n"
-        
-        "TOOL USAGE:\n"
-        "When you need to search for information, use the following format:\n"
-        "SEARCH: your specific search query\n\n"
-        "Example searches:\n"
-        "SEARCH: market size smart home automation 2025\n"
-        "SEARCH: emerging trends in personalization technology\n\n"
-        
-        "IMPORTANT:\n"
-        "- Focus on opportunities and growth\n"
-        "- Back claims with data\n"
-        "- Be enthusiastic but factual\n"
-        "- Build on previous insights\n"
-        "- Maintain professional optimism\n\n"
-        
-        "Begin your market opportunity analysis."
+async def analyze_optimistically(product_description: str, groq_api_key: str) -> str:
+    """
+    Analyze a product from an optimistic market perspective.
+    Returns analysis as a detailed text that can be used by other agents.
+    """
+    llm = ChatGroq(
+        groq_api_key=groq_api_key,
+        model_name="mixtral-8x7b-32768",
+        temperature=0.7
     )
     
-    # Get LLM response
-    response = _optimist_llm.invoke(prompt)
-    response_text = getattr(response, "content", str(response))
+    # First, determine what to research
+    research_messages = [
+        SystemMessage(content="""You are an optimistic market analyst. Your goal is to identify promising 
+        market opportunities and growth potential. While staying grounded in reality, you focus on positive 
+        indicators and potential for success."""),
+        HumanMessage(content=f"""What should we research to understand the market potential for this product?
+        
+        Product Description: {product_description}
+        
+        Think step by step about what information would help build a strong case for this product's success.""")
+    ]
     
-    # Store the response in state for verbose output
-    state = {
-        **state,
-        "current_response": response_text
-    }
+    research_plan = await llm.ainvoke(research_messages)
     
-    # Process search requests and gather evidence
-    evidence = []
-    for line in response_text.split('\n'):
-        if line.strip().startswith('SEARCH:'):
-            query = line[7:].strip()
-            # Call web_search tool through state management
-            state = add_search(state, query)
-            evidence.append(f"Search: {query} -> {state['search_results'][-1] if state['search_results'] else 'No results'}")
+    # Use web search based on the LLM's research plan
+    from tools.web_search import web_search
+    market_data = web_search(research_plan.content)
     
-    # Calculate confidence based on evidence quality
-    # Higher confidence if we got actual results vs "No results" or errors
-    evidence_quality = sum(1 for e in evidence if "No results" not in e and "Search unavailable" not in e)
-    confidence = min(0.5 + (evidence_quality * 0.1), 1.0)
+    # Analyze findings with an optimistic perspective
+    analysis_messages = [
+        SystemMessage(content="""You are an optimistic market analyst. Based on the research data, build a 
+        compelling case for the product's market potential. Focus on:
+        
+        1. Market opportunities and growth indicators
+        2. Target customer segments and their needs
+        3. Competitive advantages
+        4. Market timing and trends
+        5. Potential for success
+        
+        While maintaining credibility, emphasize positive signals and growth potential."""),
+        HumanMessage(content=f"""Analyze this market research data for our product:
+        
+        Product: {product_description}
+        
+        Research Findings:
+        {market_data}
+        
+        Provide a detailed analysis that another agent could use to understand the market opportunity.""")
+    ]
     
-    # Add analysis to state
-    state = add_market_analysis(
-        state=state,
-        perspective=MarketPerspective.OPTIMISTIC,
-        analysis=response_text,
-        evidence=evidence,
-        confidence=confidence
-    )
-    
-    # Update state stage if needed
-    if state["stage"] == AgentStage.INITIAL:
-        state = update_stage(state, AgentStage.MARKET_ANALYSIS)
-    
-    return state
+    analysis = await llm.ainvoke(analysis_messages)
+    return analysis.content

@@ -1,161 +1,40 @@
-from typing import List
+"""
+Synthesis agent that combines and balances optimistic and pessimistic analyses.
+"""
 from langchain_groq import ChatGroq
-from dotenv import load_dotenv
-from states.agent_state import (
-    AgentState, MarketPerspective, AgentStage,
-    add_search, add_market_debate_round, update_stage
-)
-import json
+from langchain_core.messages import SystemMessage, HumanMessage
 
-load_dotenv()
-
-_synthesis_llm = ChatGroq(
-    model="openai/gpt-oss-120b",
-    temperature=0.4,  # Balanced temperature for objective analysis
-    max_tokens=4096
-)
-
-def synthesis_agent(state: AgentState) -> AgentState:
-    """Synthesizes optimistic and pessimistic market analyses into balanced insights."""
-    
-    # Get relevant state information
-    optimist_view = state["current_market_analysis"].get(MarketPerspective.OPTIMISTIC)
-    pessimist_view = state["current_market_analysis"].get(MarketPerspective.PESSIMISTIC)
-    
-    if not (optimist_view and pessimist_view):
-        raise ValueError("Both optimistic and pessimistic analyses required for synthesis")
-    
-    debate_history = "\n".join([
-        f"Round {i+1}:\n{round.synthesis}\nKey Findings: {', '.join(round.key_findings)}"
-        for i, round in enumerate(state["market_debate_history"][-2:])
-    ]) if state["market_debate_history"] else ""
-    
-    current_risks = "\n".join(state["final_risks"]) if state["final_risks"] else "None identified"
-    final_insights = "\n".join(state["final_market_insights"]) if state["final_market_insights"] else "None yet"
-    
-    prompt = (
-        "You are an objective market analysis synthesizer. Your role is to evaluate "
-        "competing market perspectives and create a balanced, evidence-based synthesis. "
-        "Consider both optimistic opportunities and realistic challenges.\n\n"
-        
-        f"CONTEXT:\n{state['context']}\n\n"
-        
-        "PERSPECTIVES TO SYNTHESIZE:\n"
-        f"Optimistic View:\n{optimist_view.analysis}\n\n"
-        f"Pessimistic View:\n{pessimist_view.analysis}\n\n"
-        
-        "TOOLS AVAILABLE:\n"
-        "- web_search: Verify claims and gather additional data\n"
-        "- market_data: Validate market statistics\n"
-        "- competitor_analysis: Verify competitive landscape\n\n"
-        
-        "SYNTHESIS FRAMEWORK:\n"
-        "1. Evidence Evaluation\n"
-        "- Validate key claims\n"
-        "- Cross-reference data\n"
-        "- Identify common ground\n\n"
-        
-        "2. Market Reality Assessment\n"
-        "- Balanced opportunity analysis\n"
-        "- Realistic risk evaluation\n"
-        "- Market timing considerations\n\n"
-        
-        "3. Strategic Implications\n"
-        "- Key success factors\n"
-        "- Critical challenges\n"
-        "- Strategic recommendations\n\n"
-        
-        "4. Supporting Research\n"
-        "- Additional data needs\n"
-        "- Verification points\n"
-        "- Expert perspectives\n\n"
-        
-        "TOOL USAGE:\n"
-        "When you need to verify information, use the following format:\n"
-        "SEARCH: your specific search query\n\n"
-        "Example searches:\n"
-        "SEARCH: market validation smart home personalization\n"
-        "SEARCH: competitor analysis AI home automation\n\n"
-        
-        "DELIVERABLES:\n"
-        "1. Synthesis Summary\n"
-        "- Key agreements between perspectives\n"
-        "- Critical differences\n"
-        "- Supporting evidence\n\n"
-        
-        "2. Market Assessment\n"
-        "- Opportunity sizing\n"
-        "- Risk quantification\n"
-        "- Success probability\n\n"
-        
-        "3. Recommendations\n"
-        "- Strategic approach\n"
-        "- Risk mitigation\n"
-        "- Success metrics\n\n"
-        
-        "IMPORTANT:\n"
-        "- Maintain objectivity\n"
-        "- Focus on evidence\n"
-        "- Acknowledge uncertainties\n"
-        "- Provide actionable insights\n"
-        "- Consider timing factors\n\n"
-        
-        "Begin your synthesis of the market perspectives."
+async def synthesize_analysis(optimistic_analysis: str, pessimistic_analysis: str, groq_api_key: str) -> str:
+    """
+    Synthesize optimistic and pessimistic market analyses into a balanced view.
+    Returns analysis as a detailed text that can be used by other agents.
+    """
+    llm = ChatGroq(
+        groq_api_key=groq_api_key,
+        model_name="mixtral-8x7b-32768",
+        temperature=0.7
     )
     
-    # Get LLM response
-    response = _synthesis_llm.invoke(prompt)
-    response_text = getattr(response, "content", str(response))
-
-    state = {
-        **state,
-        "current_response": response_text
-    }
-    
-    # Process search requests and gather evidence
-    evidence = []
-    recommendations = []
-    
-    for line in response_text.split('\n'):
-        if line.strip().startswith('SEARCH:'):
-            query = line[7:].strip()
-            # Call web_search tool through state management
-            state = add_search(state, query)
-            evidence.append(f"Search: {query} -> {state['search_results'][-1] if state['search_results'] else 'No results'}")
-        elif line.strip().startswith("RECOMMENDATION:"):
-            recommendations.append(line.strip()[15:].strip())
-    
-    # Add synthesis to state and record debate round
-    state = add_market_debate_round(
-        state=state,
-        synthesis=response_text,
-        key_findings=recommendations
-    )
-    
-    # Update final insights and market score
-    if recommendations:
-        # Calculate market opportunity score based on both perspectives and synthesis
-        optimist_confidence = optimist_view.confidence
-        pessimist_confidence = pessimist_view.confidence
-        evidence_strength = len(evidence) * 0.05
+    synthesis_messages = [
+        SystemMessage(content="""You are a synthesis analyst responsible for combining optimistic and 
+        pessimistic market analyses into a balanced, comprehensive view. Your goal is to:
         
-        # Weighted score favoring the more confident perspective but tempered by evidence
-        market_score = (
-            (optimist_confidence * 0.6) +  # Optimist view weighted more
-            (pessimist_confidence * 0.4) +  # Pessimist view weighted less
-            evidence_strength  # Bonus for evidence
-        ) / (1 + evidence_strength)  # Normalize to 0-1
+        1. Identify areas of agreement between perspectives
+        2. Highlight key tensions and trade-offs
+        3. Provide balanced recommendations
+        4. Ensure all significant points from both analyses are considered
         
-        market_score = min(market_score, 1.0)
+        Create a nuanced analysis that acknowledges both opportunities and challenges."""),
+        HumanMessage(content=f"""Synthesize these two market analyses into a balanced perspective:
         
-        # Update state with new score
-        state = {
-            **state,
-            "market_opportunity_score": market_score
-        }
+        Optimistic Analysis:
+        {optimistic_analysis}
+        
+        Pessimistic Analysis:
+        {pessimistic_analysis}
+        
+        Provide a comprehensive synthesis that another agent could use to understand the complete market picture.""")
+    ]
     
-    # Move to next stage
-    if state["stage"] == AgentStage.MARKET_ANALYSIS:
-        state = update_stage(state, AgentStage.INNOVATION)
-    
-    return state
+    synthesis = await llm.ainvoke(synthesis_messages)
+    return synthesis.content

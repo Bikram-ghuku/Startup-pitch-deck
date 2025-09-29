@@ -1,146 +1,76 @@
+"""
+Innovation agent that suggests product features and implementation approaches.
+"""
 from langchain_groq import ChatGroq
-from dotenv import load_dotenv
-from tools.web_search import web_search
-from states.agent_state import (
-    AgentState, AgentStage,
-    add_search, add_innovation_debate, update_stage
-)
-import time
+from langchain_core.messages import SystemMessage, HumanMessage
 
-load_dotenv()
-
-_innovation_llm = ChatGroq(
-    model="openai/gpt-oss-120b",
-    temperature=0.8,
-    max_tokens=1024
-)
-
-def innovation_strategist(state: AgentState) -> AgentState:
-    """Generate innovative features/differentiators using direct LLM invocation with web research.
-
-    Args:
-        context: Brief description of product, target users, constraints.
-        goal: What to optimize for in the ideation.
-
-    Returns:
-        Structured reasoning chain and innovative suggestions with rationale.
+async def generate_innovation_proposal(product_description: str, market_synthesis: str, groq_api_key: str) -> str:
     """
-    # Get relevant state information
-    current_analysis = state["current_analysis"].get('latest_insight', '')
-    approved_innovations = "\n".join(state["final_innovations"]) if state["final_innovations"] else "None yet"
-    current_risks = "\n".join(state["final_risks"]) if state["final_risks"] else "None identified"
+    Generate innovative product features and implementation approaches based on product idea and market analysis.
+    Returns proposal as detailed text that can be used by other agents.
     
-    # Get innovation debate history
-    debate_history = "\n".join([
-        f"Innovation: {round.innovation_point}\n"
-        f"Critique: {round.debate_critique}\n"
-        f"Conclusion: {round.conclusion}\n---"
-        for round in state["innovation_debate_history"][-2:]  # Last 2 rounds
-    ]) if state["innovation_debate_history"] else ""
-    
-    prompt = (
-        f"You are an innovation strategist analyzing:\n{state['context']}\n\n"
-        f"CURRENT STATE:\n"
-        f"Stage: {state['stage'].value}\n"
-        f"Previously Approved Innovations:\n{approved_innovations}\n"
-        f"Known Risks:\n{current_risks}\n"
-        f"Latest Analysis:\n{current_analysis}\n\n"
-        
-        f"Previous Debate History:\n{debate_context}\n\n"
-        
-        "TOOL USAGE:\n"
-        "When you need to research, use the following format:\n"
-        "SEARCH: your specific search query\n\n"
-        "Example searches:\n"
-        "SEARCH: innovative features in smart home automation\n"
-        "SEARCH: emerging AI personalization technologies\n"
-        "SEARCH: unique smart home assistant capabilities\n\n"
-        
-        "ANALYSIS FRAMEWORK:\n"
-        "1. Context Review (use search evidence)\n"
-        "- Market dynamics and trends\n"
-        "- Current solution landscape\n"
-        "- Unmet needs and opportunities\n"
-        "- Consider previous innovations to avoid repetition\n\n"
-        
-        "2. Innovation Pathways\n"
-        "A) Evolutionary Track\n"
-        "   - Enhance existing solutions\n"
-        "   - Quick wins and improvements\n"
-        "   - Integration opportunities\n"
-        "B) Revolutionary Track\n"
-        "   - Novel approaches\n"
-        "   - Emerging tech applications\n"
-        "   - Paradigm shifts\n\n"
-        
-        "3. Critical Evaluation\n"
-        "- Technical feasibility check\n"
-        "- Market potential assessment\n"
-        "- Resource requirements\n"
-        "- Risk awareness (especially known risks)\n"
-        "- Differentiation from previous innovations\n\n"
-        
-        "4. Innovation Proposals (2-3)\n"
-        "For each innovation:\n"
-        "- Clear value proposition\n"
-        "- Implementation approach\n"
-        "- Competitive advantage\n"
-        "- Risk factors\n"
-        "- Success metrics\n\n"
-        
-        "IMPORTANT:\n"
-        "- Build upon previous successes\n"
-        "- Address known risks\n"
-        "- Avoid repeating rejected ideas\n"
-        "- Support claims with evidence\n"
-        "- Be specific and actionable\n\n"
-        
-        "Format each section with clear headings. Focus on novel insights that build upon our existing knowledge."
+    Args:
+        product_description: Original product idea/description
+        market_synthesis: Synthesized market analysis from market research stage
+        groq_api_key: API key for ChatGroq
+    """
+    llm = ChatGroq(
+        groq_api_key=groq_api_key,
+        model_name="mixtral-8x7b-32768",
+        temperature=0.7
     )
-    def _handle_search(response_text: str, state: AgentState) -> tuple[str, AgentState]:
-        """Process LLM response and handle any search requests."""
-        lines = response_text.split('\n')
-        result = []
-        for line in lines:
-            line = line.strip()
-            if line.startswith('SEARCH:'):
-                query = line[7:].strip()
-                # Call web_search tool through state management
-                state = add_search(state, query)
-                search_result = state['search_results'][-1] if state['search_results'] else 'No results'
-                result.append(f"Search Results for '{query}':")
-                result.append(search_result)
-                result.append("")
-            else:
-                result.append(line)
-        return '\n'.join(result), state
-
-    # Format prompt with debate history
-    prompt = prompt.replace("{debate_context}", debate_history)
-
-    # Initial response
-    response = _innovation_llm.invoke(prompt)
-    response_text = getattr(response, "content", str(response))
-
-    state = {
-        **state,
-        "current_response": response_text
-    }
     
-    # Handle any searches and get final response
-    final_response, state = _handle_search(response_text, state)
+    # First, determine what to research
+    research_messages = [
+        SystemMessage(content="""You are an innovation strategist. Your goal is to propose innovative 
+        product features and implementation approaches based on the original product idea and market analysis. 
+        Focus on practical innovation that addresses market needs while being technically feasible."""),
+        HumanMessage(content=f"""What should we research to develop innovative features for this product?
+        
+        Original Product Idea:
+        {product_description}
+        
+        Market Analysis:
+        {market_synthesis}
+        
+        Think step by step about what technical and market information we need to propose innovative solutions 
+        that enhance the original product idea while addressing market needs.""")
+    ]
     
-    # Store innovation point for debate
-    if state["stage"] == AgentStage.ANALYSIS:
-        state = add_innovation_debate(
-            state=state,
-            innovation=final_response,
-            critique="",  # Will be filled by debater
-            conclusion=""  # Will be filled after debate
-        )
+    research_plan = await llm.ainvoke(research_messages)
     
-    # Update state stage
-    if state["stage"] != AgentStage.COMPLETE:
-        state = update_stage(state, AgentStage.DEBATE)
+    # Use web search based on the LLM's research plan
+    from tools.web_search import web_search
+    innovation_data = web_search(research_plan.content)
     
-    return state
+    # Generate innovation proposal
+    proposal_messages = [
+        SystemMessage(content="""You are an innovation strategist. Based on the original product idea, 
+        market analysis, and research, propose innovative product features and implementation approaches. 
+        Focus on:
+        
+        1. Core product features that enhance the original idea
+        2. Technical implementation approach
+        3. Innovation differentiators
+        4. Development roadmap
+        5. Resource requirements
+        
+        Ensure proposals are both innovative and practically achievable while staying true to the 
+        original product vision."""),
+        HumanMessage(content=f"""Generate an innovation proposal based on this information:
+        
+        Original Product Idea:
+        {product_description}
+        
+        Market Analysis:
+        {market_synthesis}
+        
+        Technical Research:
+        {innovation_data}
+        
+        Provide a detailed proposal that another agent could critique and refine. Make sure to explain 
+        how each proposed innovation enhances the original product idea while addressing market needs.""")
+    ]
+    
+    proposal = await llm.ainvoke(proposal_messages)
+    return proposal.content
