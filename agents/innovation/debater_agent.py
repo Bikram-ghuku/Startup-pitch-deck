@@ -15,7 +15,7 @@ async def debate_proposal(state: MarketResearchState) -> Dict:
         groq_api_key=state.groq_api_key,
         model_name="llama-3.1-8b-instant",
         temperature=0.7,
-        max_tokens=300
+        max_tokens=500
     )
     
     # First, determine what to research for the critique
@@ -51,7 +51,7 @@ async def debate_proposal(state: MarketResearchState) -> Dict:
         4. Potential failure modes
         5. Areas for improvement
         
-        Ensure criticism is specific, actionable, and aimed at improving the proposal."""),
+        Ensure criticism is specific, actionable, and aimed at improving the proposal.Limit the critique to 200 words."""),
         HumanMessage(content=f"""Critique this innovation proposal based on the research:
         
         Product Description:
@@ -63,14 +63,15 @@ async def debate_proposal(state: MarketResearchState) -> Dict:
         Research Findings:
         {critique_data}
         
-        Limit the critique to 200 words.
-        Provide a detailed critique that can be used to improve the proposal.""")
+        Limit the critique to 100 words.
+        Provide a detailed critique that can be used to improve the proposal.Limit the critique to 100 words.""")
     ]
     
     state.iteration_count += 1
     critique = await llm.ainvoke(critique_messages)
+
+    print("\n\n\nInnovation Critique: ", critique.content)
     
     # Update state
     state.current_critique = critique.content
-    print("\n\n\nInnovation Critique: ", critique.content)
     return state.dict()

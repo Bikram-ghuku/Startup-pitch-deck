@@ -44,10 +44,9 @@ async def market_research_graph(
     # Add conditional node for iteration control
     def should_continue_iteration(state: MarketResearchState):
         if state.iteration_count >= max_iterations:
-            return {"next": "create_pitch_deck"}
-        return {"next": "innovation"}
+            return  "create_pitch_deck"
+        return "innovation"
     
-    workflow.add_node("check_iteration", should_continue_iteration)
     
     # Add pitch deck node
     workflow.add_node("create_pitch_deck", generate_pitch_deck)
@@ -60,14 +59,11 @@ async def market_research_graph(
     
     # Innovation-debate loop
     workflow.add_edge("innovation", "debate")
-    workflow.add_edge("debate", "check_iteration")
     
     # Conditional branching
     workflow.add_conditional_edges(
-        "check_iteration",
-        should_continue_iteration,
-        lambda x: x["next"]
-    )
+        "debate",
+        should_continue_iteration)
 
     # Set the entry point
     workflow.set_entry_point("optimistic_analysis")

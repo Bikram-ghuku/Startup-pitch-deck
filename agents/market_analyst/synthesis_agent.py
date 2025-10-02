@@ -27,7 +27,7 @@ async def synthesize_analysis(state: MarketResearchState) -> Dict:
         3. Provide balanced recommendations
         4. Ensure all significant points from both analyses are considered
         
-        Create a nuanced analysis that acknowledges both opportunities and challenges."""),
+        Create a nuanced analysis that acknowledges both opportunities and challenges.Keep it short and concise, max 200 words."""),
         HumanMessage(content=f"""Synthesize these two market analyses into a balanced perspective:
         
         Product Description:
@@ -39,7 +39,7 @@ async def synthesize_analysis(state: MarketResearchState) -> Dict:
         Pessimistic Analysis:
         {state.pessimistic_analysis}
         
-        Provide a comprehensive synthesis that another agent could use to understand the complete market picture.""")
+        Provide a comprehensive synthesis that another agent could use to understand the complete market picture.Keep it short and concise, max 200 words.""")
     ]
     
     synthesis = await llm.ainvoke(synthesis_messages)

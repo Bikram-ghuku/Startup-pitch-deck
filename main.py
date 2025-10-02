@@ -27,7 +27,7 @@ async def main():
         result = await market_research_graph(
             product_description=product_description,
             groq_api_key=groq_api_key,
-            max_iterations=1  # Maximum innovation-debate iterations
+            max_iterations=2  # Maximum innovation-debate iterations
         )
 
         # Print the results at each stage
@@ -42,9 +42,10 @@ async def main():
 
         print("\nInnovation Results:")
         print("-----------------")
-        print("Final Innovation Proposal:")
-        # print(result["final_innovation"])
-        
+        print("Current Innovation Proposal:")
+        print(result["current_proposal"])
+        print("\nCurrent Critique:")
+        print(result["current_critique"])
 
     except Exception as e:
         print(f"Error in market research workflow: {str(e)}")

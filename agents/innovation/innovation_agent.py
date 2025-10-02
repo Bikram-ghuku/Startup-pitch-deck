@@ -15,7 +15,7 @@ async def generate_innovation_proposal(state: MarketResearchState) -> Dict:
         groq_api_key=state.groq_api_key,
         model_name="llama-3.1-8b-instant",
         temperature=0.7,
-        max_tokens=300
+        max_tokens=500
     )
     
     # First, determine what to research
@@ -51,15 +51,14 @@ async def generate_innovation_proposal(state: MarketResearchState) -> Dict:
         Focus on:
         
         1. Core product features that enhance the original idea
-        2. Technical implementation approach
-        3. Innovation differentiators
-        4. Development roadmap
-        5. Resource requirements
+        2. Highly defined featured that are not already in the market
+        3. Features that can be added to improved its value proposition and is feasible to implement with the resources available
+        4. Give a high level description of the features and how they can be implemented
         
-        Limit the proposal to 200 words.
+        Limit the proposal to 100 words.
         Ensure proposals are both innovative and practically achievable while staying true to the 
-        original product vision. Limit the proposal to 200 words."""),
-        HumanMessage(content=f"""Generate an innovation proposal based on this information:
+        original product vision. Limit the proposal to 100 words."""),
+        HumanMessage(content=f"""Generate an innovation proposal based on this information, also make sure to follow the last critique:
         
         Product Description:
         {state.product_description}
@@ -72,14 +71,15 @@ async def generate_innovation_proposal(state: MarketResearchState) -> Dict:
 
         Last Critique:
         {state.current_critique}
+
+        Last Innovation Proposal:
+        {state.current_proposal}
         
         Provide a detailed proposal that another agent could critique and refine. Make sure to explain 
-        how each proposed innovation enhances the original product idea while addressing market needs.""")
+        how each proposed innovation enhances the original product idea while addressing market needs.Limit the proposal to 100 words.""")
     ]
     
     proposal = await llm.ainvoke(proposal_messages)
-    
-    print("\n\n\nInnovation Proposal: ", proposal.content)
-    # Update state
+
     state.current_proposal = proposal.content
     return state.dict()
