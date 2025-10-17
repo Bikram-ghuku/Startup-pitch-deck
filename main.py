@@ -15,10 +15,9 @@ async def main():
 
     # Example product description
     product_description = """
-    A mobile app that uses AI to analyze photos of skin conditions and provide 
-    preliminary assessments, recommending whether a dermatologist visit is needed. 
-    The app maintains a history of skin changes over time and can share reports 
-    directly with healthcare providers.
+   A portable urban farming kit that tracks plant health, suggests watering and nutrients, 
+   and integrates with local food networks. Designed for expansion, 
+   users or developers can add new crops, sensors, or community-sharing features.
     """
 
     try:
