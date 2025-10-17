@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #000;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .presentation-container {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Base slide styles - full viewport, one at a time */
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            visibility: hidden;
+            opacity: 0;
+            overflow-y: auto;
+            pointer-events: none;
+        }
+
+        .slide.active {
+            visibility: visible !important;
+            opacity: 1 !important;
+            pointer-events: auto;
+            animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Minimal base styles - agent has full control via inline styles */
+        .slide-number {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            font-size: 0.9em;
+            opacity: 0.6;
+        }
+
+        /* Navigation */
+        .navigation {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.95);
+            padding: 12px 25px;
+            border-radius: 50px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-button {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .nav-button:hover:not(:disabled) {
+            background: #1e40af;
+            transform: translateY(-2px);
+        }
+
+        .nav-button:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .slide-counter {
+            color: white;
+            font-size: 0.95em;
+            font-weight: 600;
+            min-width: 70px;
+            text-align: center;
+        }
+
+        /* Presenter Notes */
+        .presenter-notes {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.98);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            max-width: 700px;
+            display: none;
+            font-size: 0.95em;
+            line-height: 1.6;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+        }
+
+        .presenter-notes.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        /* Control buttons */
+        .notes-toggle, .fullscreen-toggle {
+            position: fixed;
+            top: 20px;
+            background: rgba(15, 23, 42, 0.9);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 600;
+            color: white;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .notes-toggle {
+            right: 20px;
+        }
+
+        .fullscreen-toggle {
+            left: 20px;
+        }
+
+        .notes-toggle:hover, .fullscreen-toggle:hover {
+            background: rgba(37, 99, 235, 0.9);
+            transform: translateY(-2px);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .slide {
+                width: 95%;
+            }
+
+            .slide.layout-content {
+                padding: 40px 50px;
+            }
+
+            .slide-title {
+                font-size: 2.2em;
+            }
+
+            .slide-content li,
+            .slide-content p {
+                font-size: 1.3em;
+            }
+
+            .slide.layout-visual .slide-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .slide.layout-title .slide-title {
+                font-size: 3em;
+            }
+
+            .slide-content li,
+            .slide-content p {
+                font-size: 1.1em;
+            }
+
+            .navigation {
+                bottom: 15px;
+            }
+        }
+
+        /* Print styles */
+        @media print {
+            body {
+                background: white;
+            }
+
+            .slide {
+                display: block !important;
+                page-break-after: always;
+                box-shadow: none;
+                max-width: 100%;
+                max-height: 100%;
+                border-radius: 0;
+            }
+
+            .navigation, .notes-toggle, .fullscreen-toggle, .presenter-notes {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        {{slides}}
+    </div>
+
+    <button class="fullscreen-toggle" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+    <button class="notes-toggle" onclick="toggleNotes()">📝 Notes</button>
+    
+    <div class="navigation">
+        <button class="nav-button" id="prevBtn" onclick="previousSlide()">← Prev</button>
+        <span class="slide-counter">
+            <span id="currentSlide">1</span> / <span id="totalSlides">1</span>
+        </span>
+        <button class="nav-button" id="nextBtn" onclick="nextSlide()">Next →</button>
+    </div>
+
+    <div class="presenter-notes" id="presenterNotes"></div>
+
+    <script>
+        let currentSlideIndex = 0;
+        let showNotes = false;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        function showSlide(index) {
+            slides.forEach(slide => slide.classList.remove('active'));
+            
+            if (index >= 0 && index < totalSlides) {
+                currentSlideIndex = index;
+                slides[currentSlideIndex].classList.add('active');
+                
+                document.getElementById('currentSlide').textContent = currentSlideIndex + 1;
+                document.getElementById('totalSlides').textContent = totalSlides;
+                
+                document.getElementById('prevBtn').disabled = currentSlideIndex === 0;
+                document.getElementById('nextBtn').disabled = currentSlideIndex === totalSlides - 1;
+                
+                updateNotes();
+            }
+        }
+
+        function nextSlide() {
+            if (currentSlideIndex < totalSlides - 1) {
+                showSlide(currentSlideIndex + 1);
+            }
+        }
+
+        function previousSlide() {
+            if (currentSlideIndex > 0) {
+                showSlide(currentSlideIndex - 1);
+            }
+        }
+
+        function toggleNotes() {
+            showNotes = !showNotes;
+            updateNotes();
+        }
+
+        function updateNotes() {
+            const notesDiv = document.getElementById('presenterNotes');
+            const currentSlide = slides[currentSlideIndex];
+            const notes = currentSlide.getAttribute('data-notes');
+            
+            if (showNotes && notes) {
+                notesDiv.textContent = notes;
+                notesDiv.classList.add('active');
+            } else {
+                notesDiv.classList.remove('active');
+            }
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'ArrowRight':
+                case ' ':
+                case 'PageDown':
+                    nextSlide();
+                    e.preventDefault();
+                    break;
+                case 'ArrowLeft':
+                case 'PageUp':
+                    previousSlide();
+                    e.preventDefault();
+                    break;
+                case 'Home':
+                    showSlide(0);
+                    e.preventDefault();
+                    break;
+                case 'End':
+                    showSlide(totalSlides - 1);
+                    e.preventDefault();
+                    break;
+                case 'n':
+                case 'N':
+                    toggleNotes();
+                    break;
+                case 'f':
+                case 'F':
+                    toggleFullscreen();
+                    break;
+            }
+        });
+
+        // Initialize
+        showSlide(0);
+    </script>
+</body>
+</html>

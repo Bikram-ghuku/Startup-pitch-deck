@@ -25,6 +25,7 @@ class MarketResearchState(BaseModel):
     
     # Output
     pitch_deck: str | None = None
+    pitch_deck_html: str | None = None
 
     def dict(self) -> Dict[str, Any]:
         """Convert to dict, excluding None values"""
