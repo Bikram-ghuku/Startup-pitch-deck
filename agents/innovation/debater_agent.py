@@ -5,6 +5,7 @@ from typing import Dict
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
 from states.agent_state import MarketResearchState
+from tools.web_search import web_search
 
 async def debate_proposal(state: MarketResearchState) -> Dict:
     """
@@ -15,15 +16,20 @@ async def debate_proposal(state: MarketResearchState) -> Dict:
         groq_api_key=state.groq_api_key,
         model_name="llama-3.1-8b-instant",
         temperature=0.7,
-        max_tokens=500
+        max_tokens=1500
     )
     
-    # First, determine what to research for the critique
-    research_messages = [
+    # Bind web_search tool to the LLM for autonomous tool calling
+    llm_with_tools = llm.bind_tools([web_search])
+    
+    # Let the LLM autonomously decide when to use web search
+    messages = [
         SystemMessage(content="""You are a critical debater. Your goal is to identify potential flaws, 
         challenges, and improvements in innovation proposals. Focus on constructive criticism that can 
-        lead to better solutions."""),
-        HumanMessage(content=f"""What should we research to effectively critique this proposal?
+        lead to better solutions.
+        
+        You have access to a web_search tool. Use it to research validation data when needed."""),
+        HumanMessage(content=f"""Critique this innovation proposal:
         
         Product Description:
         {state.product_description}
@@ -31,44 +37,36 @@ async def debate_proposal(state: MarketResearchState) -> Dict:
         Innovation Proposal:
         {state.current_proposal}
         
-        Think step by step about what information we need to critically evaluate this proposal.""")
-    ]
-    
-    research_plan = await llm.ainvoke(research_messages)
-    
-    # Use web search based on the LLM's research plan
-    from tools.web_search import web_search
-    critique_data = web_search(research_plan.content)
-    
-    # Generate critique
-    critique_messages = [
-        SystemMessage(content="""You are a critical debater. Based on research and analysis, provide 
-        constructive criticism of the innovation proposal. Focus on:
-        
+        Research technical feasibility and market assumptions as needed. Then provide constructive criticism focusing on:
         1. Technical feasibility challenges
         2. Resource and implementation constraints
         3. Market assumption validation
         4. Potential failure modes
         5. Areas for improvement
         
-        Ensure criticism is specific, actionable, and aimed at improving the proposal.Limit the critique to 200 words."""),
-        HumanMessage(content=f"""Critique this innovation proposal based on the research:
-        
-        Product Description:
-        {state.product_description}
-        
-        Innovation Proposal:
-        {state.current_proposal}
-        
-        Research Findings:
-        {critique_data}
-        
-        Limit the critique to 100 words.
-        Provide a detailed critique that can be used to improve the proposal.Limit the critique to 100 words.""")
+        Ensure criticism is specific, actionable, and aimed at improving the proposal. Limit the critique to 100 words.""")
     ]
     
+    response = await llm_with_tools.ainvoke(messages)
+    
+    # Check if LLM made tool calls and execute them
+    while hasattr(response, 'tool_calls') and response.tool_calls:
+        messages.append(response)
+        
+        # Execute each tool call
+        for tool_call in response.tool_calls:
+            tool_result = web_search.invoke(tool_call['args']['query'])
+            messages.append({
+                "role": "tool",
+                "content": tool_result,
+                "tool_call_id": tool_call['id']
+            })
+        
+        # Get next response from LLM
+        response = await llm_with_tools.ainvoke(messages)
+    
     state.iteration_count += 1
-    critique = await llm.ainvoke(critique_messages)
+    critique = response
 
     print("\n\n\nInnovation Critique: ", critique.content)
     

@@ -5,6 +5,7 @@ from typing import Dict
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
 from states.agent_state import MarketResearchState
+from tools.web_search import web_search
 
 async def generate_innovation_proposal(state: MarketResearchState) -> Dict:
     """
@@ -15,59 +16,26 @@ async def generate_innovation_proposal(state: MarketResearchState) -> Dict:
         groq_api_key=state.groq_api_key,
         model_name="llama-3.1-8b-instant",
         temperature=0.7,
-        max_tokens=500
+        max_tokens=1500
     )
     
-    # First, determine what to research
-    research_messages = [
+    # Bind web_search tool to the LLM for autonomous tool calling
+    llm_with_tools = llm.bind_tools([web_search])
+    
+    # Let the LLM autonomously decide when to use web search
+    messages = [
         SystemMessage(content="""You are an innovation strategist. Your goal is to propose innovative 
         product features and implementation approaches based on the original product idea and market analysis. 
-        Focus on practical innovation that addresses market needs while being technically feasible. Limit the proposal to 200 words."""),
-        HumanMessage(content=f"""What should we research to develop innovative features for this product?
+        Focus on practical innovation that addresses market needs while being technically feasible.
+        
+        You have access to a web_search tool. Use it to research technical solutions and innovations when needed."""),
+        HumanMessage(content=f"""Generate an innovation proposal for this product:
         
         Product Description:
         {state.product_description}
         
         Market Analysis:
         {state.market_synthesis}
-
-        Last Critique:
-        {state.current_critique}
-        
-        Think step by step about what technical and market information we need to propose innovative solutions 
-        that enhance the original product idea while addressing market needs.""")
-    ]
-    
-    research_plan = await llm.ainvoke(research_messages)
-    
-    # Use web search based on the LLM's research plan
-    from tools.web_search import web_search
-    innovation_data = web_search(research_plan.content)
-    
-    # Generate innovation proposal
-    proposal_messages = [
-        SystemMessage(content="""You are an innovation strategist. Based on the original product idea, 
-        market analysis, and research, propose innovative product features and implementation approaches. 
-        Focus on:
-        
-        1. Core product features that enhance the original idea
-        2. Highly defined featured that are not already in the market
-        3. Features that can be added to improved its value proposition and is feasible to implement with the resources available
-        4. Give a high level description of the features and how they can be implemented
-        
-        Limit the proposal to 100 words.
-        Ensure proposals are both innovative and practically achievable while staying true to the 
-        original product vision. Limit the proposal to 100 words."""),
-        HumanMessage(content=f"""Generate an innovation proposal based on this information, also make sure to follow the last critique:
-        
-        Product Description:
-        {state.product_description}
-        
-        Market Analysis:
-        {state.market_synthesis}
-        
-        Technical Research:
-        {innovation_data}
 
         Last Critique:
         {state.current_critique}
@@ -75,11 +43,34 @@ async def generate_innovation_proposal(state: MarketResearchState) -> Dict:
         Last Innovation Proposal:
         {state.current_proposal}
         
-        Provide a detailed proposal that another agent could critique and refine. Make sure to explain 
-        how each proposed innovation enhances the original product idea while addressing market needs.Limit the proposal to 100 words.""")
+        Research technical innovations and market trends as needed. Then propose innovative features focusing on:
+        1. Core product features that enhance the original idea
+        2. Highly defined features that are not already in the market
+        3. Features that can be added to improve its value proposition and are feasible to implement
+        4. High level description of the features and how they can be implemented
+        
+        Address any points from the last critique. Limit the proposal to 100 words.""")
     ]
     
-    proposal = await llm.ainvoke(proposal_messages)
+    response = await llm_with_tools.ainvoke(messages)
+    
+    # Check if LLM made tool calls and execute them
+    while hasattr(response, 'tool_calls') and response.tool_calls:
+        messages.append(response)
+        
+        # Execute each tool call
+        for tool_call in response.tool_calls:
+            tool_result = web_search.invoke(tool_call['args']['query'])
+            messages.append({
+                "role": "tool",
+                "content": tool_result,
+                "tool_call_id": tool_call['id']
+            })
+        
+        # Get next response from LLM
+        response = await llm_with_tools.ainvoke(messages)
+    
+    proposal = response
 
     state.current_proposal = proposal.content
     return state.dict()
