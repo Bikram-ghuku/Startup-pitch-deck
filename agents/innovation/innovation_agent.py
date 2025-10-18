@@ -49,7 +49,7 @@ async def generate_innovation_proposal(state: MarketResearchState) -> Dict:
         3. Features that can be added to improve its value proposition and are feasible to implement
         4. High level description of the features and how they can be implemented
         
-        Address any points from the last critique. Limit the proposal to 100 words.""")
+        Address any points from the last critique. Limit the proposal to 500 words.""")
     ]
     
     response = await llm_with_tools.ainvoke(messages)

@@ -15,7 +15,7 @@ async def generate_pitch_deck(state: MarketResearchState) -> Dict:
     """
     llm = ChatGroq(
         groq_api_key=state.groq_api_key,
-        model_name="llama-3.1-8b-instant",
+        model_name="qwen/qwen3-32b",
         temperature=0.7,
         max_tokens=8000
     )
@@ -25,195 +25,70 @@ async def generate_pitch_deck(state: MarketResearchState) -> Dict:
     
     # Generate pitch deck HTML with autonomous image search
     messages = [
-        SystemMessage(content="""You are an expert pitch deck designer. Your PRIMARY focus is CONTENT, not images.
+        SystemMessage(content="""Create 8-10 content-rich pitch deck slides. FOCUS ON SUBSTANTIAL TEXT CONTENT - these are full-screen slides, not image galleries.
 
-CRITICAL IMAGE RULES (STRICTLY ENFORCE):
-- Maximum 0-1 images PER SLIDE (never 2 or more)
-- Only 3-4 slides total should have images (out of 8-10 slides)
-- If you use an image, it should be SMALL - max 25% of slide space
-- Most slides should be TEXT ONLY with NO images
-- Images are OPTIONAL decoration, content is MANDATORY
-
-MANDATORY TOOL USAGE:
-Use image_search tool 2-3 times MAXIMUM for the entire deck (not per slide):
-- One hero/title image (e.g., "ai technology", "startup office")
-- One problem/solution visual (e.g., "business challenge", "innovation")
-- One team/growth visual (e.g., "team collaboration", "growth chart")
-
-Use SHORT 2-3 word queries only.
-
-FIXED COLOR SCHEME (use exactly these):
-- Gradient background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)
-- Accent gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%)
-- Card background: #f8f9fa
-- Text colors: #2c3e50 (headings), #4a5568 (body)
-- Border accent: #667eea
-
-TYPOGRAPHY RULES:
-- H2: font-size: 3em; color: #2c3e50; font-weight: 800; margin-bottom: 40px;
-- H3: font-size: 2em; color: #2c3e50; font-weight: 700; margin-bottom: 20px;
-- Body: font-size: 1.4em; line-height: 1.8; color: #4a5568;
-- All text: font-family: 'Arial', sans-serif;
-
-MANDATORY CONTENT STRUCTURE:
-
-Each slide MUST follow this pattern with MINIMUM word counts:
-
-**Slide 1: Title (50 words minimum)**
-- Company name (large)
-- Compelling tagline (15-20 words)
-- Key differentiator or metric
-- NO IMAGE or small background image only
-
-**Slide 2: Problem (200+ words)**
-Structure with 4-5 boxes/cards:
+HTML FORMAT:
 ```html
-<div style="background: #f8f9fa; padding: 30px; border-radius: 12px; border-left: 5px solid #667eea; margin-bottom: 25px;">
-    <h3 style="font-size: 2em; color: #2c3e50; margin-bottom: 15px; font-weight: 700;">Problem Title</h3>
-    <p style="font-size: 1.4em; line-height: 1.8; color: #4a5568;">Detailed 3-4 sentence explanation of the problem, its impact, who it affects, and why current solutions fail. Include specific pain points and consequences.</p>
-</div>
-```
-Repeat 4-5 times. NO IMAGES.
-
-**Slide 3: Market Opportunity (250+ words)**
-Three sections required:
-1. Market Size box with $ amount and 2-3 sentences explanation
-2. Target Segments box with detailed demographics (3-4 sentences)
-3. Growth Drivers box with 3-4 driving factors (3-4 sentences each)
-Use colored gradient boxes. NO IMAGES.
-
-**Slide 4: Solution (200+ words)**
-Layout: 
-- Top: Overview paragraph (4-5 sentences explaining core solution)
-- Below: 3-4 solution boxes addressing each problem
-Each box needs: Title + 3-4 sentence description
-ONE SMALL IMAGE optional (max 200px height, positioned at top right)
-
-**Slide 5: Product Features (250+ words)**
-5-6 feature cards in grid:
-```html
-<div style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); border-top: 4px solid #667eea;">
-    <h3 style="font-size: 1.8em; color: #2c3e50; margin-bottom: 15px;">Feature Name</h3>
-    <p style="font-size: 1.3em; line-height: 1.8; color: #4a5568;">3-4 sentences describing the feature, how it works, and specific benefits to users. Include technical details.</p>
-</div>
-```
-NO IMAGES.
-
-**Slide 6: Technology/Innovation (200+ words)**
-3 sections:
-1. Core Technology (3-4 sentences)
-2. Proprietary Advantages (3-4 sentences)
-3. Defensibility/Moat (3-4 sentences)
-Use card layouts. NO IMAGES.
-
-**Slide 7: Business Model (250+ words)**
-Must include:
-1. Revenue Streams (2-3 streams with 2-3 sentences each)
-2. Pricing Structure (specific tiers with prices and descriptions)
-3. Unit Economics (CAC, LTV, margins with explanations)
-4. Customer Acquisition (2-3 channels with detailed strategies)
-NO IMAGES.
-
-**Slide 8: Competition (200+ words)**
-Either comparison table OR 4-5 differentiation cards:
-```html
-<div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 30px; border-radius: 12px; color: white; margin-bottom: 20px;">
-    <h3 style="font-size: 1.8em; margin-bottom: 15px;">Advantage Title</h3>
-    <p style="font-size: 1.3em; line-height: 1.8;">3-4 sentences explaining the specific advantage, why competitors can't replicate it, and the impact on customer choice.</p>
-</div>
-```
-NO IMAGES.
-
-**Slide 9: Go-to-Market (200+ words)**
-4 sections required:
-1. Customer Acquisition Channels (3-4 channels with strategies)
-2. Partnerships (2-3 partner types with specific names/approaches)
-3. Marketing Strategy (specific tactics and timeline)
-4. Sales Process (step-by-step with conversion expectations)
-ONE SMALL IMAGE optional
-
-**Slide 10: Investment Ask (200+ words)**
-Must include:
-1. Amount seeking (prominent)
-2. Use of funds breakdown (5-6 categories with amounts and detailed explanations)
-3. Milestones (3-4 specific milestones with timelines)
-4. Expected outcomes (metrics and impact)
-NO IMAGES.
-
-LAYOUT RULES:
-- padding: 70px 90px; on all slides
-- Vertical layouts ONLY (no side-by-side unless image is tiny corner element)
-- If image used: position in top-right corner with max 200px width
-- Content fills 100% width
-- Cards/boxes should stack vertically
-- Generous spacing: margin-bottom: 25px; between elements
-
-EXAMPLE PERFECT SLIDE (Problem - text only, 250+ words):
-
-```html
-<div class="slide" style="background: white; padding: 70px 90px;" data-notes="Present detailed problems">
-    <h2 style="font-size: 3em; color: #2c3e50; font-weight: 800; margin-bottom: 50px; border-bottom: 5px solid #667eea; padding-bottom: 20px;">The Problem We're Solving</h2>
-    
-    <div style="background: #f8f9fa; padding: 30px; border-radius: 12px; border-left: 5px solid #667eea; margin-bottom: 25px;">
-        <h3 style="font-size: 2em; color: #2c3e50; margin-bottom: 15px; font-weight: 700;">Fragmented Financial Data</h3>
-        <p style="font-size: 1.4em; line-height: 1.8; color: #4a5568;">Modern consumers have their finances scattered across 5-7 different platforms: banking apps, credit cards, investment accounts, and payment services. This fragmentation makes it nearly impossible to understand their complete financial picture. Users waste 3-4 hours per week manually tracking expenses across platforms, leading to poor financial decisions and missed savings opportunities worth an average of $2,400 annually per user.</p>
-    </div>
-    
-    <div style="background: #f8f9fa; padding: 30px; border-radius: 12px; border-left: 5px solid #f5576c; margin-bottom: 25px;">
-        <h3 style="font-size: 2em; color: #2c3e50; margin-bottom: 15px; font-weight: 700;">Complex Existing Solutions</h3>
-        <p style="font-size: 1.4em; line-height: 1.8; color: #4a5568;">Current financial management tools overwhelm users with excessive features and complicated interfaces designed for financial professionals. Studies show 73% of users abandon financial apps within the first month because they're too complex to understand and require significant time investment to set up properly. The learning curve prevents mass adoption and limits the market to finance-savvy individuals.</p>
-    </div>
-    
-    <div style="background: #f8f9fa; padding: 30px; border-radius: 12px; border-left: 5px solid #667eea; margin-bottom: 25px;">
-        <h3 style="font-size: 2em; color: #2c3e50; margin-bottom: 15px; font-weight: 700;">Lack of Personalization</h3>
-        <p style="font-size: 1.4em; line-height: 1.8; color: #4a5568;">Generic financial advice doesn't account for individual circumstances, goals, or life stages. A 25-year-old starting their career has vastly different needs than a 45-year-old planning retirement, yet existing apps provide one-size-fits-all recommendations. This results in irrelevant insights that users ignore, missing opportunities to genuinely improve their financial health through tailored, actionable advice.</p>
-    </div>
-    
-    <div style="background: #f8f9fa; padding: 30px; border-radius: 12px; border-left: 5px solid #f5576c; margin-bottom: 25px;">
-        <h3 style="font-size: 2em; color: #2c3e50; margin-bottom: 15px; font-weight: 700;">No Proactive Guidance</h3>
-        <p style="font-size: 1.4em; line-height: 1.8; color: #4a5568;">Current tools are reactive, showing what happened in the past without helping users make better future decisions. Users need proactive alerts about upcoming bills, spending pattern warnings, and automated optimization suggestions. Without predictive intelligence, users repeatedly make the same financial mistakes, accumulating debt and missing investment opportunities that could compound into significant wealth over time.</p>
-    </div>
-    
-    <div class="slide-number">2</div>
+<div class="slide" style="background: #yourcolor; padding: 80px;">
+    <h2 style="font-size: 3em; color: #textcolor; font-weight: 700; margin-bottom: 30px;">Slide Title</h2>
+    <!-- Your rich content here: paragraphs, lists, tables, etc. -->
+    <div class="slide-number">1</div>
 </div>
 ```
 
-CRITICAL SUCCESS CRITERIA:
-✓ Each slide has 200-250+ words of actual content
-✓ Maximum 3-4 images in the ENTIRE deck (not per slide)
-✓ All text properly styled and aligned
-✓ Content is specific, detailed, data-driven
-✓ No generic statements - everything backed by numbers or specifics
-✓ Consistent color scheme throughout
+FIXED STYLING RULES (Non-negotiable):
+1. Light backgrounds (#fff, #f5f5f5, pastels) → Dark text (#000, #333, #2c3e50)
+2. Dark backgrounds (#000, #1a1a2e, dark gradients) → Light text (#fff, #f0f0f0)
+3. Images: Always `<img src="url" style="width: 400px; height: 300px; object-fit: cover;">`
+4. NO background images. Use solid colors or gradients only.
+5. All styling inline on every element.
 
-Generate ONLY <div class="slide"> elements."""),
-        HumanMessage(content=f"""Create a content-rich pitch deck (8-10 slides) based on:
+CONTENT REQUIREMENTS (THIS IS PRIORITY #1):
+Each slide needs 150-250+ words of actual content:
+- Write detailed paragraphs (4-6 sentences each)
+- Create bullet lists with substantial descriptions
+- Add tables for comparisons/pricing with details
+- Include specific data, metrics, numbers
+- Explain concepts thoroughly - don't just list keywords
 
-PRODUCT:
-{state.product_description}
+REQUIRED SLIDES:
+1. Title - company name, tagline, key value prop (100+ words)
+2. Problem - 4-5 detailed problem points with explanations
+3. Market - market size, segments, growth drivers (detailed analysis)
+4. Solution - how your product works (detailed explanation)
+5. Features - 5-6 features with full descriptions
+6. Technology - technical details and advantages
+7. Business Model - revenue, pricing, economics (specific numbers)
+8. Competition - competitive analysis (table or detailed points)
+9. Go-to-Market - channels, strategy, partnerships (actionable details)
+10. Investment - ask amount, use of funds breakdown, milestones
 
-MARKET ANALYSIS:
-{state.market_synthesis}
+IMAGE USAGE:
+- Use image_search 2-4 times for inline visuals
+- Images are OPTIONAL - only if they enhance content
+- Most slides should be text-heavy with NO images
 
-INNOVATION:
-{state.current_proposal}
+CREATIVE FREEDOM:
+- Choose any color scheme that looks professional
+- Use any layout: columns, grids, cards, tables
+- Add visual elements: borders, shadows, rounded corners
 
-REQUIREMENTS:
-1. Use image_search ONLY 2-3 times total for: product category (2 words), one problem/solution visual (2 words), one growth visual (2 words)
-2. Generate 8-10 slides following the exact structure above
-3. MOST slides should have ZERO images - focus on rich text content
-4. If a slide has an image, make it small (200px max) in top-right corner
-5. Each slide MUST have 200-250+ words minimum
-6. Use the exact color scheme and typography provided
-7. Follow the card/box structure for organizing content
-8. Include specific numbers, metrics, data points throughout
-9. Every statement should be detailed with 3-4 sentence explanations
+Generate slides with RICH, DETAILED TEXT CONTENT."""),
+        HumanMessage(content=f"""Create 8-10 slides with detailed, comprehensive content based on:
 
-Focus on CONTENT DENSITY over visual design. Text is priority #1.""")
+PRODUCT: {state.product_description}
+
+MARKET ANALYSIS: {state.market_synthesis}
+
+INNOVATION: {state.current_proposal}
+
+Write 150-250+ words per slide. Focus on explaining concepts thoroughly with specific data and examples. Use image_search for 2-4 visuals only. Prioritize text content over images.""")
     ]
+
+    print("Content Received: ", "\nDescription: ", state.product_description, "\nMarket Analysis: ", state.market_synthesis, "\nInnovation: ", state.current_proposal)
     
-    print("\n\n🎨 Starting content-focused pitch deck generation...")
-    print("📸 Phase 1: Limited image search (2-3 images max)...")
+    print("\n\n📝 Generating content-rich pitch deck...")
+    print("🔍 Searching for supporting visuals (2-4 images max)...")
     response = await llm_with_tools.ainvoke(messages)
     
     # Check if LLM made tool calls and execute them
@@ -225,13 +100,13 @@ Focus on CONTENT DENSITY over visual design. Text is priority #1.""")
         for tool_call in response.tool_calls:
             tool_call_count += 1
             query = tool_call['args'].get('query', 'business')
-            print(f"  🔍 [{tool_call_count}] Searching: '{query}'")
+            print(f"  📸 [{tool_call_count}] Searching: '{query}'")
             
-            # Limit to 3 image searches max
-            if tool_call_count <= 3:
+            # Limit to 4 image searches max
+            if tool_call_count <= 4:
                 tool_result = image_search.invoke(query)
             else:
-                print("    ⚠️  Skipping - max 3 images enforced")
+                print("    ⚠️  Limit reached - max 4 images")
                 tool_result = '{"query": "' + query + '", "count": 0, "images": []}'
             
             messages.append({
@@ -241,10 +116,10 @@ Focus on CONTENT DENSITY over visual design. Text is priority #1.""")
             })
         
         # Get next response from LLM
-        print("📝 Phase 2: Generating text-heavy slides...")
+        print("✍️  Writing detailed slide content...")
         response = await llm_with_tools.ainvoke(messages)
     
-    print(f"✅ Used {min(tool_call_count, 3)} images (max 3 enforced)")
+    print(f"✅ Generated deck with {min(tool_call_count, 4)} images")
     
     slides_html = response.content.strip()
     
@@ -266,16 +141,18 @@ Focus on CONTENT DENSITY over visual design. Text is priority #1.""")
     # Count images
     img_count = len(re.findall(r'<img\s+', slides_html))
     
-    print("\n📊 DECK STATISTICS:")
+    print("\n📊 CONTENT ANALYSIS:")
     print(f"   Slides: {slide_count}")
     print(f"   Total words: {word_count}")
     print(f"   Avg words/slide: {avg_words}")
-    print(f"   Images used: {img_count}")
+    print(f"   Images: {img_count}")
     
-    if avg_words < 180:
-        print("   ⚠️  WARNING: Content density too low! Target is 200-250 words/slide")
+    if avg_words < 120:
+        print("   ⚠️  WARNING: Content too sparse - target 150-250 words/slide")
+    elif avg_words >= 150:
+        print("   ✅ Excellent content depth!")
     else:
-        print("   ✅ Content density is good!")
+        print("   ✓  Good content, could add more detail")
     
     # Extract title
     title_match = re.search(r'<h1[^>]*>(.*?)</h1>', slides_html, re.IGNORECASE | re.DOTALL)
