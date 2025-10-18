@@ -52,10 +52,14 @@ def _search_pexels(query: str, limit: int = 1) -> List[Dict[str, str]]:
 @tool
 def image_search(query: str, limit: int = 5) -> str:
     """
-    Search for business images using Pexels API (FREE).
+    Search for professional images using Pexels API.
     
-    Setup: Set environment variable PEXELS_API_KEY
-    Get free key: https://www.pexels.com/api/
+    Use SHORT, SPECIFIC queries (2-4 words maximum) for best results:
+    - Good: "ai technology", "growth chart", "team meeting", "mobile app"
+    - Bad: "business people working in modern office building"
+    
+    Returns JSON with image URLs that can be embedded in HTML.
+    Example: Extract url with: json.loads(result)['images'][0]['url']
     """
     import json
     

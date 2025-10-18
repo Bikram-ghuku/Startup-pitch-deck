@@ -20,6 +20,7 @@ def web_search(query: str) -> str:
         Search results from DuckDuckGo
     """
     try:
+        print(f"Searching for: {query} \n\n")
         results = _ddg_search.invoke(query)
         return results
     except Exception as e:
