@@ -17,64 +17,36 @@ async def generate_pitch_deck(state: MarketResearchState) -> Dict:
         groq_api_key=state.groq_api_key,
         model_name="qwen/qwen3-32b",
         temperature=0.7,
-        max_tokens=8000
+        max_tokens=4000
     )
     
     # Bind image_search tool to the LLM for autonomous tool calling
     llm_with_tools = llm.bind_tools([image_search])
     
-    # Generate pitch deck HTML with autonomous image search
-    messages = [
-        SystemMessage(content="""Create 8-10 content-rich pitch deck slides. FOCUS ON SUBSTANTIAL TEXT CONTENT - these are full-screen slides, not image galleries.
+    print("Content Received: ", "\nDescription: ", state.product_description, "\nMarket Analysis: ", state.market_synthesis, "\nInnovation: ", state.current_proposal)
+    
+    # Step 1: Generate a high-level plan
+    print("\n\n📋 Step 1: Creating slide structure plan...")
+    plan_messages = [
+        SystemMessage(content="""Create a detailed plan for a pitch deck with 8-10 slides. For each slide, specify:
+1. Slide number and title
+2. Key content points to cover (3-5 bullet points)
+3. Suggested layout approach
+4. Whether an image would enhance the slide
 
-HTML FORMAT:
-```html
-<div class="slide" style="background: #yourcolor; padding: 80px;">
-    <h2 style="font-size: 3em; color: #textcolor; font-weight: 700; margin-bottom: 30px;">Slide Title</h2>
-    <!-- Your rich content here: paragraphs, lists, tables, etc. -->
-    <div class="slide-number">1</div>
-</div>
-```
+Return ONLY a structured plan like this:
+SLIDE 1: [Title]
+- Content point 1
+- Content point 2
+- Content point 3
+- Layout: [approach]
+- Image needed: [yes/no]
 
-FIXED STYLING RULES (Non-negotiable):
-1. Light backgrounds (#fff, #f5f5f5, pastels) → Dark text (#000, #333, #2c3e50)
-2. Dark backgrounds (#000, #1a1a2e, dark gradients) → Light text (#fff, #f0f0f0)
-3. Images: Always `<img src="url" style="width: 400px; height: 300px; object-fit: cover;">`
-4. NO background images. Use solid colors or gradients only.
-5. All styling inline on every element.
+SLIDE 2: [Title]
+...
 
-CONTENT REQUIREMENTS (THIS IS PRIORITY #1):
-Each slide needs 150-250+ words of actual content:
-- Write detailed paragraphs (4-6 sentences each)
-- Create bullet lists with substantial descriptions
-- Add tables for comparisons/pricing with details
-- Include specific data, metrics, numbers
-- Explain concepts thoroughly - don't just list keywords
-
-REQUIRED SLIDES:
-1. Title - company name, tagline, key value prop (100+ words)
-2. Problem - 4-5 detailed problem points with explanations
-3. Market - market size, segments, growth drivers (detailed analysis)
-4. Solution - how your product works (detailed explanation)
-5. Features - 5-6 features with full descriptions
-6. Technology - technical details and advantages
-7. Business Model - revenue, pricing, economics (specific numbers)
-8. Competition - competitive analysis (table or detailed points)
-9. Go-to-Market - channels, strategy, partnerships (actionable details)
-10. Investment - ask amount, use of funds breakdown, milestones
-
-IMAGE USAGE:
-- Use image_search 2-4 times for inline visuals
-- Images are OPTIONAL - only if they enhance content
-- Most slides should be text-heavy with NO images
-
-CREATIVE FREEDOM:
-- Choose any color scheme that looks professional
-- Use any layout: columns, grids, cards, tables
-- Add visual elements: borders, shadows, rounded corners
-
-Generate slides with RICH, DETAILED TEXT CONTENT."""),
-        HumanMessage(content=f"""Create 8-10 slides with detailed, comprehensive content based on:
+Focus on creating a logical flow from problem to solution to market to business model."""),
+        HumanMessage(content=f"""Create a pitch deck plan based on:
 
 PRODUCT: {state.product_description}
 
@@ -82,46 +54,124 @@ MARKET ANALYSIS: {state.market_synthesis}
 
 INNOVATION: {state.current_proposal}
 
-Write 150-250+ words per slide. Focus on explaining concepts thoroughly with specific data and examples. Use image_search for 2-4 visuals only. Prioritize text content over images.""")
+Plan 8-10 slides with detailed content points for each.""")
     ]
+    
+    plan_response = await llm.ainvoke(plan_messages)
+    slide_plan = plan_response.content.strip()
+    print("✅ Plan created")
+    print(f"\n📋 SLIDE PLAN:\n{slide_plan}\n")
+    
+    # Step 2: Generate slides iteratively
+    print("\n🎨 Step 2: Generating slides iteratively...")
+    all_slides_html = []
+    image_count = 0
+    
+    # Parse the plan to extract slide information
+    import re
+    slide_sections = re.split(r'SLIDE \d+:', slide_plan)
+    
+    for i, section in enumerate(slide_sections[1:], 1):  # Skip first empty section
+        print(f"\n📝 Generating Slide {i}...")
+        
+        # Extract slide title and content from the section
+        lines = section.strip().split('\n')
+        slide_title = lines[0].strip()
+        
+        slide_messages = [
+            SystemMessage(content="""Generate ONE slide with rich content. Follow these rules:
+                        HTML FORMAT:
+                        ```html
+                        <div class="slide" style="background: #yourcolor; padding: 80px;">
+                            <h2 style="font-size: 3em; color: #textcolor; font-weight: 700; margin-bottom: 30px;">Slide Title</h2>
+                            <!-- Your rich content here: paragraphs, lists, tables, etc. -->
+                            <div class="slide-number">1</div>
+                        </div>
+                        ```
 
-    print("Content Received: ", "\nDescription: ", state.product_description, "\nMarket Analysis: ", state.market_synthesis, "\nInnovation: ", state.current_proposal)
-    
-    print("\n\n📝 Generating content-rich pitch deck...")
-    print("🔍 Searching for supporting visuals (2-4 images max)...")
-    response = await llm_with_tools.ainvoke(messages)
-    
-    # Check if LLM made tool calls and execute them
-    tool_call_count = 0
-    while hasattr(response, 'tool_calls') and response.tool_calls:
-        messages.append(response)
+                        STYLING RULES:
+                        1. Light backgrounds (#fff, #f5f5f5, pastels) → Dark text (#000, #333, #2c3e50)
+                        2. Dark backgrounds (#000, #1a1a2e, dark gradients) → Light text (#fff, #f0f0f0)
+                        3. Images: `<img src="url" style="width: 400px; height: 300px; object-fit: cover;">`
+                        4. NO background images. Use solid colors or gradients only.
+                        5. All styling inline on every element.
+
+                        CONTENT REQUIREMENTS:
+                        - Write 150-250+ words of actual content
+                        - Use detailed paragraphs (4-6 sentences each)
+                        - Include specific data, metrics, numbers where possible
+                        - Explain concepts thoroughly
+
+                        Generate ONLY the HTML for ONE slide."""),
+                                    HumanMessage(content=f"""Generate slide {i} with title: "{slide_title}"
+
+                        Based on this information:
+                        PRODUCT: {state.product_description}
+                        MARKET ANALYSIS: {state.market_synthesis}
+                        INNOVATION: {state.current_proposal}
+
+                        Slide content points from plan:
+                        {section}
+
+                        Write detailed, comprehensive content for this single slide.""")
+        ]
         
-        # Execute each tool call
-        for tool_call in response.tool_calls:
-            tool_call_count += 1
-            query = tool_call['args'].get('query', 'business')
-            print(f"  📸 [{tool_call_count}] Searching: '{query}'")
+        # Check if this slide needs an image
+        if "Image needed: yes" in section.lower():
+            slide_messages[0] = SystemMessage(content="""Generate ONE slide with rich content. Follow these rules:
+
+                HTML FORMAT:
+                ```html
+                <div class="slide" style="background: #yourcolor; padding: 80px;">
+                    <h2 style="font-size: 3em; color: #textcolor; font-weight: 700; margin-bottom: 30px;">Slide Title</h2>
+                    <!-- Your rich content here: paragraphs, lists, tables, etc. -->
+                    <div class="slide-number">1</div>
+                </div>
+                ```
+
+                STYLING RULES:
+                1. Light backgrounds (#fff, #f5f5f5, pastels) → Dark text (#000, #333, #2c3e50)
+                2. Dark backgrounds (#000, #1a1a2e, dark gradients) → Light text (#fff, #f0f0f0)
+                3. Images: `<img src="url" style="width: 400px; height: 300px; object-fit: cover;">`
+                4. NO background images. Use solid colors or gradients only.
+                5. All styling inline on every element.
+
+                CONTENT REQUIREMENTS:
+                - Write 150-250+ words of actual content
+                - Use detailed paragraphs (4-6 sentences each)
+                - Include specific data, metrics, numbers where possible
+                - Explain concepts thoroughly
+                - You can use image_search tool if an image would enhance the content
+
+                Generate ONLY the HTML for ONE slide.""")
+        
+        response = await llm_with_tools.ainvoke(slide_messages)
+        
+        # Handle image search if tool calls were made
+        while hasattr(response, 'tool_calls') and response.tool_calls and image_count < 4:
+            slide_messages.append(response)
             
-            # Limit to 4 image searches max
-            if tool_call_count <= 4:
+            for tool_call in response.tool_calls:
+                image_count += 1
+                query = tool_call['args'].get('query', 'business')
+                print(f"  📸 Searching for image: '{query}'")
+                
                 tool_result = image_search.invoke(query)
-            else:
-                print("    ⚠️  Limit reached - max 4 images")
-                tool_result = '{"query": "' + query + '", "count": 0, "images": []}'
+                slide_messages.append({
+                    "role": "tool",
+                    "content": tool_result,
+                    "tool_call_id": tool_call['id']
+                })
             
-            messages.append({
-                "role": "tool",
-                "content": tool_result,
-                "tool_call_id": tool_call['id']
-            })
+            response = await llm_with_tools.ainvoke(slide_messages)
         
-        # Get next response from LLM
-        print("✍️  Writing detailed slide content...")
-        response = await llm_with_tools.ainvoke(messages)
+        slide_html = response.content.strip()
+        all_slides_html.append(slide_html)
+        print(f"✅ Slide {i} generated")
     
-    print(f"✅ Generated deck with {min(tool_call_count, 4)} images")
-    
-    slides_html = response.content.strip()
+    # Combine all slides
+    slides_html = '\n\n'.join(all_slides_html)
+    print(f"\n✅ Generated {len(all_slides_html)} slides with {image_count} images")
     
     # Count slides
     import re

@@ -15,9 +15,9 @@ async def main():
 
     # Example product description
     product_description = """
-   A portable urban farming kit that tracks plant health, suggests watering and nutrients, 
-   and integrates with local food networks. Designed for expansion, 
-   users or developers can add new crops, sensors, or community-sharing features.
+   A portable perfume dispensor machine which will spray a required type of perfume selected by user.
+   This will be attached outside of hotels, resturants. There will be expensive as well as cheap perfume bottles.
+   The user will have option to choose how much they want and can pay accordingly.
     """
 
     try:
