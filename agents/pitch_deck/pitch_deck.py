@@ -15,7 +15,7 @@ async def generate_pitch_deck(state: MarketResearchState) -> Dict:
         groq_api_key=state.groq_api_key,
         model_name="llama-3.3-70b-versatile",
         temperature=0.7,
-        max_tokens=4000
+        max_tokens=500
     )
     
     # Bind image_search tool to the LLM for autonomous tool calling
