@@ -15,9 +15,11 @@ async def main():
 
     # Example product description
     product_description = """
-   A portable perfume dispensor machine which will spray a required type of perfume selected by user.
+   A simple perfume dispenser machine which will have a number of different types of perfumes.
+   The user can select the type of perfume they want and the machine will spray the perfume into the dress of the user.
    This will be attached outside of hotels, resturants. There will be expensive as well as cheap perfume bottles.
-   The user will have option to choose how much they want and can pay accordingly.
+   The user will have option to choose how much they want and can pay accordingly. A single spray will cost about 10 rupees.
+   
     """
 
     try:

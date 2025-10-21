@@ -1,12 +1,10 @@
-"""
-Pitch deck generation agent that creates compelling HTML presentations.
-"""
 from typing import Dict
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
 from states.agent_state import MarketResearchState
 from tools.save_pitch_deck_html import save_pitch_deck_html
 from tools.image_search import image_search
+
 
 async def generate_pitch_deck(state: MarketResearchState) -> Dict:
     """
@@ -15,7 +13,7 @@ async def generate_pitch_deck(state: MarketResearchState) -> Dict:
     """
     llm = ChatGroq(
         groq_api_key=state.groq_api_key,
-        model_name="qwen/qwen3-32b",
+        model_name="llama-3.3-70b-versatile",
         temperature=0.7,
         max_tokens=4000
     )
@@ -26,9 +24,9 @@ async def generate_pitch_deck(state: MarketResearchState) -> Dict:
     print("Content Received: ", "\nDescription: ", state.product_description, "\nMarket Analysis: ", state.market_synthesis, "\nInnovation: ", state.current_proposal)
     
     # Step 1: Generate a high-level plan
-    print("\n\n📋 Step 1: Creating slide structure plan...")
+    print("\n\n Step 1: Creating slide structure plan...")
     plan_messages = [
-        SystemMessage(content="""Create a detailed plan for a pitch deck with 8-10 slides. For each slide, specify:
+        SystemMessage(content="""Create a detailed plan for a pitch deck with 10-20 slides. For each slide, specify:
 1. Slide number and title
 2. Key content points to cover (3-5 bullet points)
 3. Suggested layout approach
@@ -59,8 +57,8 @@ Plan 8-10 slides with detailed content points for each.""")
     
     plan_response = await llm.ainvoke(plan_messages)
     slide_plan = plan_response.content.strip()
-    print("✅ Plan created")
-    print(f"\n📋 SLIDE PLAN:\n{slide_plan}\n")
+    print(" Plan created")
+    print(f"\n SLIDE PLAN:\n{slide_plan}\n")
     
     # Step 2: Generate slides iteratively
     print("\n🎨 Step 2: Generating slides iteratively...")
@@ -79,39 +77,60 @@ Plan 8-10 slides with detailed content points for each.""")
         slide_title = lines[0].strip()
         
         slide_messages = [
-            SystemMessage(content="""Generate ONE slide with rich content using Tailwind CSS classes. Follow these rules:
+            SystemMessage(content="""Generate ONE slide using Tailwind CSS. Use this basic format:
 
-                        HTML FORMAT:
-                        ```html
-                        <div class="slide bg-gradient-to-br from-blue-50 to-indigo-100 p-20 min-h-screen flex flex-col justify-center">
-                            <h2 class="text-5xl font-bold text-gray-900 mb-8 font-serif">Slide Title</h2>
-                            <div class="space-y-6 text-lg leading-relaxed text-gray-700">
-                                <!-- Your rich content here: paragraphs, lists, tables, etc. -->
-                            </div>
-                            <div class="slide-number">1</div>
-                        </div>
-                        ```
+            <div class="slide bg-gradient-to-br from-blue-50 to-indigo-100 p-16 min-h-screen flex gap-8">
+                <div class="flex-1 flex flex-col justify-center">
+                    <h2 class="text-5xl font-bold text-gray-900 mb-8 font-serif flex items-center gap-4">
+                        <i class="fas fa-chart-line text-blue-600"></i>Title
+                    </h2>
+                    <div class="space-y-6 text-lg leading-relaxed text-gray-700">
+                        <!-- Content here -->
+                    </div>
+                </div>
+                <div class="flex-1 flex items-center justify-center">
+                    <img src="image-url" class="w-96 h-72 object-cover rounded-xl shadow-2xl" alt="Description">
+                </div>
+                <div class="slide-number">1</div>
+            </div>
 
-                        TAILWIND STYLING RULES:
-                        1. Use Tailwind classes for ALL styling - NO inline styles
-                        2. Background options: bg-white, bg-gray-50, bg-blue-50, bg-gradient-to-br from-blue-50 to-indigo-100, bg-gradient-to-br from-slate-900 to-gray-800, bg-gradient-to-br from-purple-50 to-pink-50
-                        3. Text colors: text-gray-900, text-gray-700, text-white, text-gray-100, text-slate-800
-                        4. Typography: text-4xl, text-5xl, text-6xl for headings, text-lg, text-xl, text-2xl for body
-                        5. Font families: font-serif for headings (Playfair Display), font-sans for body (Inter), font-mono for code/data
-                        6. Spacing: p-16, p-20, p-24 for padding, space-y-4, space-y-6, space-y-8 for vertical spacing, gap-6, gap-8 for flex/grid
-                        7. Images: class="w-96 h-72 object-cover rounded-lg shadow-lg"
-                        8. Add shadows: shadow-lg, shadow-xl for depth
-                        9. Use proper line heights: leading-relaxed, leading-loose for body text
-                        10. Use font weights: font-light, font-normal, font-medium, font-semibold, font-bold
+            CRITICAL: Return ONLY the HTML div element, NO markdown blocks, NO backticks, NO function calls.
 
-                        CONTENT REQUIREMENTS:
-                        - Write 150-250+ words of actual content
-                        - Use detailed paragraphs (4-6 sentences each)
-                        - Include specific data, metrics, numbers where possible
-                        - Explain concepts thoroughly
-                        - Use proper Tailwind spacing and typography classes
+            LAYOUT OPTIONS:
+            - Side-by-side: flex with two flex-1 divs (text left/right, image right/left - vary the order)
+            - Centered: flex-col items-center justify-center text-center (for title slides)
+            - Image-above: flex-col with image at top, text below
+            - Grid: grid grid-cols-2 gap-8 (balanced layout)
+            - Custom: Create your own creative layouts using flex, grid, or other Tailwind utilities
 
-                        Generate ONLY the HTML for ONE slide with Tailwind classes."""),
+            STYLING:
+            - Backgrounds: bg-gradient-to-br from-blue-50 to-indigo-100, from-slate-900 to-gray-800, from-purple-50 to-pink-100, bg-white
+            - Images: w-96 h-72, w-80 h-60, w-full h-80, w-full max-w-2xl h-80
+            - Icons: fas fa-chart-line, fas fa-users, fas fa-star, fas fa-lightbulb with colors text-blue-600, text-purple-600, text-yellow-400
+            - Stats: Use colored boxes with text-3xl font-bold and colors text-green-600, text-blue-600, text-red-600
+
+            AVAILABLE CDNs (Use the below tools to each and every slide to improve the look and feel):
+            - Fonts: font-sans (Inter), font-serif (Playfair Display), font-poppins (Poppins), font-montserrat (Montserrat), font-roboto (Roboto)
+            - Icons: Font Awesome (fas fa-*), Bootstrap Icons (bi bi-*), Feather Icons (feather-*)
+            - Animations: animate.css classes (animate-fadeIn, animate-slideInUp, animate-bounce), AOS (data-aos="fade-up")
+            - Charts: Chart.js for data visualization
+            - 3D Effects: Three.js for 3D elements, Particles.js for particle effects
+            - Advanced Animations: GSAP for smooth animations
+
+            TOOL USAGE:
+            - ALWAYS call image_search tool for each slide if image is needed
+            - Use queries like "business meeting", "growth chart", "technology", "perfume dispenser"
+            - Use returned image URLs in <img> tags with proper styling
+            - Include proper alt text for accessibility
+
+            CREATIVE FREEDOM:
+            - VARY your layouts and backgrounds for visual interest
+            - Experiment with different arrangements (image left/right, top/bottom)
+            - Use creative positioning and sizing for images
+            - Try different background gradients and color schemes
+            - Mix and match layout elements creatively
+
+            Write 150-250 words with metrics and data."""),
                                     HumanMessage(content=f"""Generate slide {i} with title: "{slide_title}"
 
                         Based on this information:
@@ -125,42 +144,6 @@ Plan 8-10 slides with detailed content points for each.""")
                         Write detailed, comprehensive content for this single slide.""")
         ]
         
-        # Check if this slide needs an image
-        if "Image needed: yes" in section.lower():
-            slide_messages[0] = SystemMessage(content="""Generate ONE slide with rich content using Tailwind CSS classes. Follow these rules:
-
-                HTML FORMAT:
-                ```html
-                <div class="slide bg-gradient-to-br from-blue-50 to-indigo-100 p-20 min-h-screen flex flex-col justify-center">
-                    <h2 class="text-5xl font-bold text-gray-900 mb-8 font-serif">Slide Title</h2>
-                    <div class="space-y-6 text-lg leading-relaxed text-gray-700">
-                        <!-- Your rich content here: paragraphs, lists, tables, etc. -->
-                    </div>
-                    <div class="slide-number">1</div>
-                </div>
-                ```
-
-                TAILWIND STYLING RULES:
-                1. Use Tailwind classes for ALL styling - NO inline styles
-                2. Background options: bg-white, bg-gray-50, bg-blue-50, bg-gradient-to-br from-blue-50 to-indigo-100, bg-gradient-to-br from-slate-900 to-gray-800, bg-gradient-to-br from-purple-50 to-pink-50
-                3. Text colors: text-gray-900, text-gray-700, text-white, text-gray-100, text-slate-800
-                4. Typography: text-4xl, text-5xl, text-6xl for headings, text-lg, text-xl, text-2xl for body
-                5. Font families: font-serif for headings (Playfair Display), font-sans for body (Inter), font-mono for code/data
-                6. Spacing: p-16, p-20, p-24 for padding, space-y-4, space-y-6, space-y-8 for vertical spacing, gap-6, gap-8 for flex/grid
-                7. Images: class="w-96 h-72 object-cover rounded-lg shadow-lg"
-                8. Add shadows: shadow-lg, shadow-xl for depth
-                9. Use proper line heights: leading-relaxed, leading-loose for body text
-                10. Use font weights: font-light, font-normal, font-medium, font-semibold, font-bold
-
-                CONTENT REQUIREMENTS:
-                - Write 150-250+ words of actual content
-                - Use detailed paragraphs (4-6 sentences each)
-                - Include specific data, metrics, numbers where possible
-                - Explain concepts thoroughly
-                - Use proper Tailwind spacing and typography classes
-                - You can use image_search tool if an image would enhance the content
-
-                Generate ONLY the HTML for ONE slide with Tailwind classes.""")
         
         response = await llm_with_tools.ainvoke(slide_messages)
         
@@ -176,13 +159,29 @@ Plan 8-10 slides with detailed content points for each.""")
                 tool_result = image_search.invoke(query)
                 slide_messages.append({
                     "role": "tool",
-                    "content": tool_result,
+                    "content": f"Image search result: {tool_result}. Use the image URL from this result in your HTML <img> tag with proper styling: class='w-96 h-72 object-cover rounded-xl shadow-2xl'",
                     "tool_call_id": tool_call['id']
                 })
             
             response = await llm_with_tools.ainvoke(slide_messages)
         
         slide_html = response.content.strip()
+        
+        # Clean up any markdown code blocks that might have been generated
+        if slide_html.startswith('```html'):
+            slide_html = slide_html.replace('```html', '').replace('```', '').strip()
+        elif slide_html.startswith('```'):
+            slide_html = slide_html.replace('```', '').strip()
+        
+        # Clean up function calls and replace with placeholder images
+        import re
+        slide_html = re.sub(r'<function=image_search>.*?</function>', 
+                           'https://images.pexels.com/photos/10600142/pexels-photo-10600142.jpeg?auto=compress&cs=tinysrgb&h=650&w=940', 
+                           slide_html)
+        slide_html = re.sub(r'<img src=json\.loads\(<function=image_search>.*?</function>\)\[.*?\]', 
+                           '<img src="https://images.pexels.com/photos/10600142/pexels-photo-10600142.jpeg?auto=compress&cs=tinysrgb&h=650&w=940"', 
+                           slide_html)
+        
         all_slides_html.append(slide_html)
         print(f"✅ Slide {i} generated")
     
