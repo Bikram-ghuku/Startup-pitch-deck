@@ -79,30 +79,39 @@ Plan 8-10 slides with detailed content points for each.""")
         slide_title = lines[0].strip()
         
         slide_messages = [
-            SystemMessage(content="""Generate ONE slide with rich content. Follow these rules:
+            SystemMessage(content="""Generate ONE slide with rich content using Tailwind CSS classes. Follow these rules:
+
                         HTML FORMAT:
                         ```html
-                        <div class="slide" style="background: #yourcolor; padding: 80px;">
-                            <h2 style="font-size: 3em; color: #textcolor; font-weight: 700; margin-bottom: 30px;">Slide Title</h2>
-                            <!-- Your rich content here: paragraphs, lists, tables, etc. -->
+                        <div class="slide bg-gradient-to-br from-blue-50 to-indigo-100 p-20 min-h-screen flex flex-col justify-center">
+                            <h2 class="text-5xl font-bold text-gray-900 mb-8 font-serif">Slide Title</h2>
+                            <div class="space-y-6 text-lg leading-relaxed text-gray-700">
+                                <!-- Your rich content here: paragraphs, lists, tables, etc. -->
+                            </div>
                             <div class="slide-number">1</div>
                         </div>
                         ```
 
-                        STYLING RULES:
-                        1. Light backgrounds (#fff, #f5f5f5, pastels) → Dark text (#000, #333, #2c3e50)
-                        2. Dark backgrounds (#000, #1a1a2e, dark gradients) → Light text (#fff, #f0f0f0)
-                        3. Images: `<img src="url" style="width: 400px; height: 300px; object-fit: cover;">`
-                        4. NO background images. Use solid colors or gradients only.
-                        5. All styling inline on every element.
+                        TAILWIND STYLING RULES:
+                        1. Use Tailwind classes for ALL styling - NO inline styles
+                        2. Background options: bg-white, bg-gray-50, bg-blue-50, bg-gradient-to-br from-blue-50 to-indigo-100, bg-gradient-to-br from-slate-900 to-gray-800, bg-gradient-to-br from-purple-50 to-pink-50
+                        3. Text colors: text-gray-900, text-gray-700, text-white, text-gray-100, text-slate-800
+                        4. Typography: text-4xl, text-5xl, text-6xl for headings, text-lg, text-xl, text-2xl for body
+                        5. Font families: font-serif for headings (Playfair Display), font-sans for body (Inter), font-mono for code/data
+                        6. Spacing: p-16, p-20, p-24 for padding, space-y-4, space-y-6, space-y-8 for vertical spacing, gap-6, gap-8 for flex/grid
+                        7. Images: class="w-96 h-72 object-cover rounded-lg shadow-lg"
+                        8. Add shadows: shadow-lg, shadow-xl for depth
+                        9. Use proper line heights: leading-relaxed, leading-loose for body text
+                        10. Use font weights: font-light, font-normal, font-medium, font-semibold, font-bold
 
                         CONTENT REQUIREMENTS:
                         - Write 150-250+ words of actual content
                         - Use detailed paragraphs (4-6 sentences each)
                         - Include specific data, metrics, numbers where possible
                         - Explain concepts thoroughly
+                        - Use proper Tailwind spacing and typography classes
 
-                        Generate ONLY the HTML for ONE slide."""),
+                        Generate ONLY the HTML for ONE slide with Tailwind classes."""),
                                     HumanMessage(content=f"""Generate slide {i} with title: "{slide_title}"
 
                         Based on this information:
@@ -118,32 +127,40 @@ Plan 8-10 slides with detailed content points for each.""")
         
         # Check if this slide needs an image
         if "Image needed: yes" in section.lower():
-            slide_messages[0] = SystemMessage(content="""Generate ONE slide with rich content. Follow these rules:
+            slide_messages[0] = SystemMessage(content="""Generate ONE slide with rich content using Tailwind CSS classes. Follow these rules:
 
                 HTML FORMAT:
                 ```html
-                <div class="slide" style="background: #yourcolor; padding: 80px;">
-                    <h2 style="font-size: 3em; color: #textcolor; font-weight: 700; margin-bottom: 30px;">Slide Title</h2>
-                    <!-- Your rich content here: paragraphs, lists, tables, etc. -->
+                <div class="slide bg-gradient-to-br from-blue-50 to-indigo-100 p-20 min-h-screen flex flex-col justify-center">
+                    <h2 class="text-5xl font-bold text-gray-900 mb-8 font-serif">Slide Title</h2>
+                    <div class="space-y-6 text-lg leading-relaxed text-gray-700">
+                        <!-- Your rich content here: paragraphs, lists, tables, etc. -->
+                    </div>
                     <div class="slide-number">1</div>
                 </div>
                 ```
 
-                STYLING RULES:
-                1. Light backgrounds (#fff, #f5f5f5, pastels) → Dark text (#000, #333, #2c3e50)
-                2. Dark backgrounds (#000, #1a1a2e, dark gradients) → Light text (#fff, #f0f0f0)
-                3. Images: `<img src="url" style="width: 400px; height: 300px; object-fit: cover;">`
-                4. NO background images. Use solid colors or gradients only.
-                5. All styling inline on every element.
+                TAILWIND STYLING RULES:
+                1. Use Tailwind classes for ALL styling - NO inline styles
+                2. Background options: bg-white, bg-gray-50, bg-blue-50, bg-gradient-to-br from-blue-50 to-indigo-100, bg-gradient-to-br from-slate-900 to-gray-800, bg-gradient-to-br from-purple-50 to-pink-50
+                3. Text colors: text-gray-900, text-gray-700, text-white, text-gray-100, text-slate-800
+                4. Typography: text-4xl, text-5xl, text-6xl for headings, text-lg, text-xl, text-2xl for body
+                5. Font families: font-serif for headings (Playfair Display), font-sans for body (Inter), font-mono for code/data
+                6. Spacing: p-16, p-20, p-24 for padding, space-y-4, space-y-6, space-y-8 for vertical spacing, gap-6, gap-8 for flex/grid
+                7. Images: class="w-96 h-72 object-cover rounded-lg shadow-lg"
+                8. Add shadows: shadow-lg, shadow-xl for depth
+                9. Use proper line heights: leading-relaxed, leading-loose for body text
+                10. Use font weights: font-light, font-normal, font-medium, font-semibold, font-bold
 
                 CONTENT REQUIREMENTS:
                 - Write 150-250+ words of actual content
                 - Use detailed paragraphs (4-6 sentences each)
                 - Include specific data, metrics, numbers where possible
                 - Explain concepts thoroughly
+                - Use proper Tailwind spacing and typography classes
                 - You can use image_search tool if an image would enhance the content
 
-                Generate ONLY the HTML for ONE slide.""")
+                Generate ONLY the HTML for ONE slide with Tailwind classes.""")
         
         response = await llm_with_tools.ainvoke(slide_messages)
         
